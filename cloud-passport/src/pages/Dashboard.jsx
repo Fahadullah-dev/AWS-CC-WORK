@@ -5,7 +5,7 @@ import Passport from './Passport';
 import Checkin from './Checkin';
 import Stamps from './Stamps';
 import SkillTree from './SkillTree';
-import { supabase } from '../lib/supabase';
+import { signOut } from 'aws-amplify/auth';
 
 // The High-Quality Physical White Page Wrapper
 const Page = React.forwardRef((props, ref) => {
@@ -57,7 +57,7 @@ export default function Dashboard({ user }) {
         <button 
           className="btn-outline" 
           style={{ borderColor: '#ff4444', color: '#ff4444', background: 'rgba(255, 68, 68, 0.05)' }}
-          onClick={() => supabase.auth.signOut()}
+          onClick={() => signOut()}
         >
           Logout
         </button>

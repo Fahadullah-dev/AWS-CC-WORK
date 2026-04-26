@@ -1,8 +1,10 @@
-// src/pages/SkillTree.jsx
 import { useState, useEffect } from 'react';
-import { getUserAttendance } from '../lib/supabase';
+import { generateClient } from 'aws-amplify/api';
+import { getCurrentUser } from 'aws-amplify/auth';
+import { listEvents, listAttendances } from '../graphql/queries';
 
-// Defining the tracks and their respective skills/milestones
+const client = generateClient();
+
 const ALL_TRACKS = [
   { name: 'Compute',    icon: '☁️',  color: '#FF9900', events: ['EC2 Basics', 'Lambda Lab', 'Containers 101', 'EKS Workshop', 'Compute Master'] },
   { name: 'Networking', icon: '🌐',  color: '#3B82F6', events: ['VPC Basics', 'VPC Deep Dive', 'Route 53 Lab', 'CloudFront CDN', 'Net Master'] },
@@ -10,39 +12,54 @@ const ALL_TRACKS = [
   { name: 'AI/ML',      icon: '🤖',  color: '#A855F7', events: ['AI/ML Intro', 'SageMaker Lab', 'Bedrock Workshop', 'AI Master'] },
 ];
 
-export default function SkillTree({ user, tracksToShow }) {
-  const [attendedNames, setAttendedNames] = useState([]);
-
-  // Filters tracks based on the specific page of the book they are displayed on
+export default function SkillTree({ tracksToShow }) {
+  const [attendedEventNames, setAttendedEventNames] = useState([]);
   const visibleTracks = ALL_TRACKS.filter(t => tracksToShow.includes(t.name));
 
   useEffect(() => {
-    // Fetching live attendance data from Supabase
-    getUserAttendance(user.id).then(({ data }) => {
-      const names = (data || []).map(a => a.events?.name).filter(Boolean);
-      setAttendedNames(names);
-    });
-  }, [user.id]);
+    fetchSkillData();
+  }, []);
+
+  async function fetchSkillData() {
+    try {
+      const { userId } = await getCurrentUser();
+      
+      // 1. Get all attendances for the user
+      const attRes = await client.graphql({
+        query: listAttendances,
+        variables: { filter: { userID: { eq: userId } } }
+      });
+      const attendedIds = attRes.data.listAttendances.items.map(a => a.eventID);
+
+      // 2. Get all events
+      const eventsRes = await client.graphql({ query: listEvents });
+      const allEvents = eventsRes.data.listEvents.items;
+
+      // 3. Map attended IDs to their actual Event Names
+      const names = attendedIds.map(id => {
+        const found = allEvents.find(e => e.id === id);
+        return found ? found.name : null;
+      }).filter(Boolean);
+
+      setAttendedEventNames(names);
+    } catch (err) {
+      console.error("Error fetching skill tree:", err);
+    }
+  }
 
   return (
     <div className="page-wrap" style={{ padding: '0px' }}>
       <div className="tracks">
         {visibleTracks.map(track => {
-          const completed = track.events.filter(e => attendedNames.includes(e));
+          const completed = track.events.filter(e => attendedEventNames.includes(e));
           const pct = Math.round((completed.length / track.events.length) * 100);
           
           return (
             <div key={track.name} style={{ marginBottom: '35px' }}>
-              {/* TRACK HEADER: Explicitly dark to stand out on white pages */}
-              <div className="track-header" style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
+              
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
                 <span style={{ fontSize: '24px', marginRight: '10px' }}>{track.icon}</span>
-                <span style={{ 
-                  fontWeight: '900', 
-                  color: '#0f172a', 
-                  fontSize: '18px', 
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em' 
-                }}>
+                <span style={{ fontWeight: '900', color: '#0f172a', fontSize: '18px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   {track.name}
                 </span>
                 <span style={{ marginLeft: 'auto', fontSize: '13px', color: '#64748b', fontWeight: 'bold' }}>
@@ -50,32 +67,20 @@ export default function SkillTree({ user, tracksToShow }) {
                 </span>
               </div>
 
-              {/* PROGRESS BAR: Subtle track with vibrant fill */}
               <div style={{ background: '#f1f5f9', borderRadius: '99px', height: '8px', marginBottom: '20px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
                 <div style={{ width: `${pct}%`, background: track.color, height: '100%', borderRadius: '99px', transition: 'width 0.5s ease' }} />
               </div>
 
-              {/* MASTERY NODES: Displayed as a connected journey */}
-              <div className="nodes-row" style={{ display: 'flex', justifyContent: 'space-between', position: 'relative' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative' }}>
                 {track.events.map((evt, i) => {
-                  const done = attendedNames.includes(evt);
+                  const done = attendedEventNames.includes(evt);
                   
                   return (
                     <div key={evt} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, position: 'relative' }}>
-                      {/* Connecting Line between nodes */}
                       {i > 0 && (
-                        <div style={{
-                          position: 'absolute',
-                          top: '15px',
-                          left: '-50%',
-                          right: '50%',
-                          height: '2px',
-                          background: done ? track.color : '#e2e8f0',
-                          zIndex: 1
-                        }} />
+                        <div style={{ position: 'absolute', top: '15px', left: '-50%', right: '50%', height: '2px', background: done ? track.color : '#e2e8f0', zIndex: 1 }} />
                       )}
                       
-                      {/* Node Circle */}
                       <div style={{
                         width: '32px', height: '32px', borderRadius: '50%',
                         border: `2px solid ${done ? track.color : '#cbd5e1'}`,
@@ -88,15 +93,7 @@ export default function SkillTree({ user, tracksToShow }) {
                         {done ? '✓' : i + 1}
                       </div>
                       
-                      {/* Node Label: Dark and bold if completed */}
-                      <div style={{ 
-                        fontSize: '10px', 
-                        color: done ? '#0f172a' : '#94a3b8', 
-                        marginTop: '8px', 
-                        textAlign: 'center', 
-                        fontWeight: done ? '800' : '600',
-                        lineHeight: '1.2'
-                      }}>
+                      <div style={{ fontSize: '10px', color: done ? '#0f172a' : '#94a3b8', marginTop: '8px', textAlign: 'center', fontWeight: done ? '800' : '600', lineHeight: '1.2' }}>
                         {evt.split(' ').slice(0, 2).join(' ')}
                       </div>
                     </div>
@@ -104,7 +101,6 @@ export default function SkillTree({ user, tracksToShow }) {
                 })}
               </div>
               
-              {/* Completion Badge */}
               {pct === 100 && (
                 <div style={{ marginTop: '15px', textAlign: 'center', color: track.color, fontSize: '12px', fontWeight: '900', textTransform: 'uppercase' }}>
                   🏆 {track.name} Mastery Complete

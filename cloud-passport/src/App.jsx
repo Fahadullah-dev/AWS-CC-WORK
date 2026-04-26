@@ -1,51 +1,52 @@
 // src/App.jsx
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { getCurrentUser } from 'aws-amplify/auth';
+import { Hub } from 'aws-amplify/utils';
 import Dashboard from './pages/Dashboard';
-import Auth from './pages/Auth';
-import { supabase } from './lib/supabase';
-import './index.css';
+import Auth from './pages/Auth'; // Or wherever your Auth component is located
 
-function App() {
-  const [session, setSession] = useState(null);
+export default function App() {
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Check if user is already logged in when the app loads
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
+    checkUser();
+
+    // Listen for authentication events (login, logout, signup)
+    const unsubscribe = Hub.listen('auth', ({ payload }) => {
+      switch (payload.event) {
+        case 'signedIn':
+          checkUser();
+          break;
+        case 'signedOut':
+          setUser(null);
+          break;
+      }
     });
 
-    // Listen for login/logout events
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
+    return unsubscribe;
   }, []);
 
-  if (loading) {
-    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'var(--neon-blue)' }}>Loading E-Passport...</div>;
+  async function checkUser() {
+    try {
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+    } catch (error) {
+      // User is not logged in
+      setUser(null);
+    }
+    setLoading(false);
   }
 
-  return (
-    <Router>
-      <Routes>
-        {/* If NOT logged in, show Auth screen. If logged in, send them to Dashboard. */}
-        <Route 
-          path="/" 
-          element={!session ? <Auth onLogin={(user) => setSession({ user })} /> : <Navigate to="/dashboard" />} 
-        />
-        
-        {/* If logged in, show Dashboard. If NOT logged in, kick them back to login. */}
-        <Route 
-          path="/dashboard" 
-          element={session ? <Dashboard user={session.user} /> : <Navigate to="/" />} 
-        />
-      </Routes>
-    </Router>
-  );
-}
+  if (loading) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0b1120', color: 'white' }}>
+        <h2>Loading AWS Passport...☁️</h2>
+      </div>
+    );
+  }
 
-export default App;
+  // If we have a user, show the Dashboard. If not, show the Login page.
+  return user ? <Dashboard user={user} /> : <Auth />;
+}
