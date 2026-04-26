@@ -10,7 +10,7 @@
     "config": {
       "SourceDir": "cloud-passport/src",
       "DistributionDir": "cloud-passport/dist",
-      "BuildCommand": "cd cloud-passport && npm run",
+      "BuildCommand": "cd cloud-passport && npm run build",
       "StartCommand": "cd cloud-passport && npm run dev"
     }
   }
