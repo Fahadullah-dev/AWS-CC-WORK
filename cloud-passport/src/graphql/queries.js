@@ -7,6 +7,9 @@ export const getUser = /* GraphQL */ `
       id
       email
       full_name
+      major
+      year
+      intake
       member_id
       public_slug
       xp
@@ -29,6 +32,9 @@ export const listUsers = /* GraphQL */ `
         id
         email
         full_name
+        major
+        year
+        intake
         member_id
         public_slug
         xp

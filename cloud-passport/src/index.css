@@ -155,3 +155,19 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--o
 .success-event { font-size: 22px; font-weight: 800; }
 .success-xp { font-size: 26px; font-weight: 800; color: var(--orange); }
 .success-total { font-size: 14px; color: var(--muted); font-weight: 600; }
+
+
+/* ── MOBILE RESPONSIVENESS ── */
+@media (max-width: 768px) {
+  .stf__wrapper {
+    width: 95vw !important;     /* Shrink book to fit screen */
+    height: 80vh !important;
+    margin-top: 10px !important;
+  }
+  .page-content {
+    padding: 15px !important;   /* Less padding on phones */
+  }
+  .page-left, .page-right {
+    padding: 15px !important;
+  }
+}

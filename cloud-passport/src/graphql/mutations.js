@@ -10,6 +10,9 @@ export const createUser = /* GraphQL */ `
       id
       email
       full_name
+      major
+      year
+      intake
       member_id
       public_slug
       xp
@@ -30,6 +33,9 @@ export const updateUser = /* GraphQL */ `
       id
       email
       full_name
+      major
+      year
+      intake
       member_id
       public_slug
       xp
@@ -50,6 +56,9 @@ export const deleteUser = /* GraphQL */ `
       id
       email
       full_name
+      major
+      year
+      intake
       member_id
       public_slug
       xp

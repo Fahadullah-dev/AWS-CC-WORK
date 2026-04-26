@@ -4,6 +4,9 @@ type User @model @auth(rules: [{allow: public}]) {
   id: ID!
   email: String!
   full_name: String!
+  major: [String]
+  year: Int
+  intake: String
   member_id: String!
   public_slug: String
   xp: Int!
