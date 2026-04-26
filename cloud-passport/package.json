@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@multiavatar/multiavatar": "^1.0.7",
     "@supabase/supabase-js": "^2.104.1",
     "aws-amplify": "^6.16.4",
     "html2canvas": "^1.4.1",

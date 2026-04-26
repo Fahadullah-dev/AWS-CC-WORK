@@ -1,90 +1,84 @@
-import { useState, useEffect } from 'react';
-import { generateClient } from 'aws-amplify/api';
-import { getCurrentUser } from 'aws-amplify/auth';
-import { listEvents, listAttendances } from '../graphql/queries';
+import React from 'react';
 
-const client = generateClient();
-
-const TRACK_COLORS = {
-  Compute:    { bg: 'rgba(255,153,0,0.1)',  border: 'rgba(255,153,0,0.4)',  text: '#C87000' },
-  Networking: { bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.4)', text: '#2563EB' },
-  Security:   { bg: 'rgba(29,158,117,0.1)', border: 'rgba(29,158,117,0.4)', text: '#0F6E56' },
-  'AI/ML':    { bg: 'rgba(168,85,247,0.1)', border: 'rgba(168,85,247,0.4)', text: '#7C3AED' },
-  General:    { bg: 'rgba(136,135,128,0.1)',border: 'rgba(136,135,128,0.4)',text: '#5F5E5A' },
-};
+const STAMPS_DATA = [
+  { id: 1, name: 'Genesis', date: '04/20/2026', icon: 'https://img.icons8.com/?size=100&id=46726&format=png&color=000000', collected: true },
+  { id: 2, name: 'Cloud-101', date: '04/25/2026', icon: 'https://img.icons8.com/?size=100&id=46757&format=png&color=000000', collected: true },
+  { id: 3, name: 'Buildathon', date: '--/--/--', icon: 'https://img.icons8.com/?size=100&id=46704&format=png&color=000000', collected: false },
+  { id: 4, name: 'Security', date: '--/--/--', icon: 'https://img.icons8.com/?size=100&id=46732&format=png&color=000000', collected: false },
+  { id: 5, name: 'Networker', date: '--/--/--', icon: 'https://img.icons8.com/?size=100&id=46698&format=png&color=000000', collected: false },
+  { id: 6, name: 'AI Expert', date: '--/--/--', icon: 'https://img.icons8.com/?size=100&id=103790&format=png&color=000000', collected: false },
+];
 
 export default function Stamps() {
-  const [attendedEventIds, setAttendedEventIds] = useState([]);
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchStampsData();
-  }, []);
-
-  async function fetchStampsData() {
-    try {
-      const { userId } = await getCurrentUser();
-      
-      // Fetch all events
-      const eventsRes = await client.graphql({ query: listEvents });
-      setEvents(eventsRes.data.listEvents.items || []);
-
-      // Fetch user's attendances
-      const attendancesRes = await client.graphql({
-        query: listAttendances,
-        variables: { filter: { userID: { eq: userId } } }
-      });
-      
-      const ids = (attendancesRes.data.listAttendances.items || []).map(a => a.eventID);
-      setAttendedEventIds(ids);
-    } catch (err) {
-      console.error("Error fetching stamps:", err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const earnedCount = events.filter(e => attendedEventIds.includes(e.id)).length;
-
-  if (loading) return <div style={{ color: '#64748b', textAlign: 'center', marginTop: '20px' }}>Loading stamps...</div>;
-
   return (
-    <div className="page-wrap" style={{ color: '#0f172a' }}>
-      <div className="page-header" style={{ marginBottom: '20px' }}>
-        <h2 style={{ color: '#0f172a', fontWeight: '900', marginTop: 0, marginBottom: '5px' }}>Visa Stamps</h2>
-        <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>{earnedCount} / {events.length} EARNED</span>
+    <div style={{ backgroundColor: 'white', padding: '30px', color: 'black' }}>
+      <h2 style={{ 
+        marginTop: 0, fontWeight: '900', fontSize: '20px', 
+        borderBottom: '4px solid black', paddingBottom: '15px',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+      }}>
+        [ REWARD_STAMPS_LOG ]
+        <span style={{ fontSize: '11px', color: '#666' }}>COLLECTED: 2/12</span>
+      </h2>
+
+      <div style={{ 
+        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', 
+        gap: '20px', marginTop: '25px' 
+      }}>
+        {STAMPS_DATA.map(stamp => (
+          <div key={stamp.id} style={{
+            border: stamp.collected ? '3px solid black' : '2px dashed #ccc',
+            padding: '15px 10px',
+            textAlign: 'center',
+            backgroundColor: stamp.collected ? '#fff' : '#fafafa',
+            boxShadow: stamp.collected ? '4px 4px 0px black' : 'none',
+            position: 'relative',
+            opacity: stamp.collected ? 1 : 0.6
+          }}>
+            {/* The Badge Icon */}
+            <img 
+              src={stamp.icon} 
+              alt={stamp.name}
+              style={{ 
+                width: '40px', height: '40px', marginBottom: '10px',
+                filter: stamp.collected ? 'none' : 'grayscale(100%) brightness(1.5)'
+              }}
+            />
+            
+            {/* Stamp Label */}
+            <div style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: 'black' }}>
+              {stamp.name}
+            </div>
+            
+            {/* Unlock Date */}
+            <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#888', marginTop: '4px' }}>
+              {stamp.date}
+            </div>
+
+            {/* Collected Seal */}
+            {stamp.collected && (
+              <div style={{
+                position: 'absolute', top: '-5px', right: '-5px',
+                backgroundColor: '#FF9900', border: '2px solid black',
+                width: '18px', height: '18px', borderRadius: '50%',
+                fontSize: '10px', fontWeight: '900', display: 'flex',
+                alignItems: 'center', justifyContent: 'center'
+              }}>
+                ✓
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '15px' }}>
-        {events.map(event => {
-          const earned = attendedEventIds.includes(event.id);
-          const colors = TRACK_COLORS[event.track] || TRACK_COLORS.General;
-          
-          return (
-            <div
-              key={event.id}
-              style={{
-                background: earned ? colors.bg : 'transparent',
-                border: earned ? `2px solid ${colors.border}` : '1px dashed #cbd5e1',
-                borderRadius: '8px',
-                padding: '15px 10px',
-                textAlign: 'center',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <div style={{ fontSize: '30px', opacity: earned ? 1 : 0.2, marginBottom: '8px' }}>
-                {event.emoji}
-              </div>
-              <div style={{ color: earned ? colors.text : '#94a3b8', fontSize: '11px', fontWeight: 'bold', lineHeight: '1.2' }}>
-                {event.name}
-              </div>
-            </div>
-          );
-        })}
+      {/* Rarity Legend */}
+      <div style={{ 
+        marginTop: '30px', padding: '15px', border: '3px solid black', 
+        backgroundColor: '#6B38FB', color: 'white'
+      }}>
+        <p style={{ margin: 0, fontSize: '10px', fontWeight: '900', textAlign: 'center', letterSpacing: '1px' }}>
+          &gt; TOTAL_REWARDS_UNLOCKED: 250 XP EQUIVALENT &lt;
+        </p>
       </div>
     </div>
   );

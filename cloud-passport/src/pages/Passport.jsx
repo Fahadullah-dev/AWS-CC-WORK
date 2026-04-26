@@ -1,263 +1,172 @@
 import React, { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/api';
-import { getCurrentUser } from 'aws-amplify/auth';
+import { getCurrentUser, deleteUser as deleteCognitoUser, signOut } from 'aws-amplify/auth';
 import { getUser, listAttendances } from '../graphql/queries';
-import { createUser, updateUser } from '../graphql/mutations';
+import { createUser, updateUser, deleteUser as deleteDBUser } from '../graphql/mutations';
 
 const client = generateClient();
-
-const AVAILABLE_MAJORS = ['AI', 'Computer Science', 'Cybersecurity', 'BIS'];
+const AVAILABLE_MAJORS = ['AI', 'CS', 'Cyber', 'BIS', 'Game Dev'];
 const AVATAR_PRESETS = [
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix&backgroundColor=b6e3f4",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka&backgroundColor=ffdfbf",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Molly&backgroundColor=c0aede",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Oliver&backgroundColor=d1d4f9",
+  "/avatars/pfp1.jpg", "/avatars/pfp2.jpg", "/avatars/pfp3.jpg", "/avatars/pfp4.jpg", "/avatars/pfp5.jpg",
+  "/avatars/pfp6.jpg", "/avatars/pfp7.jpg", "/avatars/pfp8.jpg", "/avatars/pfp9.jpg", "/avatars/pfp10.jpg"
 ];
 
 export default function Passport() {
   const [profile, setProfile] = useState(null);
-  const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [userId, setUserId] = useState(null);
   const [userEmail, setUserEmail] = useState('');
+  const [userId, setUserId] = useState(null);
+  const [form, setForm] = useState({ full_name: '', major: [], year: 1, intake: '', avatar_url: '' });
 
-  const [form, setForm] = useState({
-    full_name: '', major: [], year: 1, intake: 'Jan 2026', avatar_url: AVATAR_PRESETS[0]
-  });
+  useEffect(() => { fetchProfile(); }, []);
 
-  useEffect(() => {
-    fetchOrInitializeProfile();
-  }, []);
-
-  async function fetchOrInitializeProfile() {
+  async function fetchProfile() {
     try {
       const { userId, signInDetails } = await getCurrentUser();
       setUserId(userId);
       setUserEmail(signInDetails?.loginId);
-
-      let fetchedProfile = null;
-      try {
-        const userRes = await client.graphql({ query: getUser, variables: { id: userId } });
-        fetchedProfile = userRes.data.getUser;
-      } catch (e) {
-        console.warn("User not found in DB yet, triggering onboarding...");
-      }
-
-      // THE FIX: If no profile is found, FORCE the edit screen to open
-      if (fetchedProfile) {
-        setProfile(fetchedProfile);
-        
-        // Safely map values to the edit form in case they want to edit later
-        setForm({
-          full_name: fetchedProfile.full_name || '',
-          major: fetchedProfile.major || [],
-          year: fetchedProfile.year || 1,
-          intake: fetchedProfile.intake || 'Jan 2026',
-          avatar_url: fetchedProfile.avatar_url || AVATAR_PRESETS[0]
-        });
-
-        fetchAttendance(userId);
-      } else {
-        setIsEditing(true); 
-      }
-    } catch (err) {
-      console.error("Auth error:", err);
-    } finally {
-      setLoading(false);
-    }
+      const res = await client.graphql({ query: getUser, variables: { id: userId } });
+      if (res.data.getUser) {
+        setProfile(res.data.getUser);
+        setForm(res.data.getUser);
+      } else { setIsEditing(true); }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   }
 
-  async function fetchAttendance(uid) {
-    try {
-      const attRes = await client.graphql({ query: listAttendances, variables: { filter: { userID: { eq: uid } } } });
-      setAttendance(attRes.data.listAttendances.items);
-    } catch (e) {
-      console.error("Could not fetch attendance");
-    }
-  }
+  const toggleMajor = (m) => {
+    setForm(prev => prev.major.includes(m) ? { ...prev, major: prev.major.filter(x => x !== m) } : prev.major.length >= 2 ? (alert("Max 2 majors"), prev) : { ...prev, major: [...prev.major, m] });
+  };
 
-  const toggleMajor = (major) => {
-    setForm(prev => {
-      const newMajors = prev.major.includes(major) 
-        ? prev.major.filter(m => m !== major) 
-        : [...prev.major, major];
-      return { ...prev, major: newMajors };
-    });
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 200; 
+        let width = img.width; let height = img.height;
+        if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } } 
+        else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        setForm({...form, avatar_url: canvas.toDataURL('image/jpeg', 0.9)});
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
   };
 
   const saveProfile = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      if (!profile) {
-        const newProfileData = {
-          id: userId,
-          email: userEmail,
-          full_name: form.full_name,
-          major: form.major,
-          year: parseInt(form.year),
-          intake: form.intake,
-          member_id: `AWS-${Math.floor(1000 + Math.random() * 9000)}`,
-          xp: 0,
-          tier: "Beginner",
-          avatar_url: form.avatar_url
-        };
-        const res = await client.graphql({ query: createUser, variables: { input: newProfileData } });
-        setProfile(res.data.createUser);
-      } else {
-        const updateData = {
-          id: profile.id,
-          full_name: form.full_name,
-          major: form.major,
-          year: parseInt(form.year),
-          intake: form.intake,
-          avatar_url: form.avatar_url
-        };
-        const res = await client.graphql({ query: updateUser, variables: { input: updateData } });
-        setProfile(res.data.updateUser);
-      }
+      const studentID = userEmail.split('@')[0];
+      const input = { id: userId, email: userEmail, full_name: form.full_name, major: form.major, year: parseInt(form.year), intake: form.intake, avatar_url: form.avatar_url, member_id: studentID };
+      const res = profile ? await client.graphql({ query: updateUser, variables: { input } }) : await client.graphql({ query: createUser, variables: { input: {...input, xp: 0, tier: "Beginner"} } });
+      setProfile(profile ? res.data.updateUser : res.data.createUser);
       setIsEditing(false);
-    } catch (err) {
-      console.error("Save failed:", err);
-      alert("Error saving profile. Check console for details.");
-    }
+    } catch (err) { alert("Save failed: " + err.message); }
     setLoading(false);
   };
 
-  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>Syncing Data...</div>;
+  const handleDeleteAccount = async () => {
+    if (!window.confirm("🚨 PERMANENTLY DELETE ACCOUNT?")) return;
+    setLoading(true);
+    try {
+      if (profile) await client.graphql({ query: deleteDBUser, variables: { input: { id: profile.id } } });
+      await deleteCognitoUser();
+      await signOut();
+      window.location.reload();
+    } catch (err) { alert("Delete failed."); setLoading(false); }
+  };
 
-  // ==========================================
-  // EDIT / ONBOARDING VIEW
-  // ==========================================
+  if (loading) return <div style={{ textAlign: 'center', padding: '100px', fontWeight: '900', color: 'black' }}>SYNCING_IDENTITY_SYSTEM...</div>;
+
   if (isEditing) {
     return (
-      <div style={{ padding: '20px', background: '#f8fafc', borderRadius: '12px', color: '#0f172a' }}>
-        <h2 style={{ marginTop: 0, marginBottom: '20px' }}>{profile ? 'Edit Passport' : 'Complete Your Profile'}</h2>
-        <form onSubmit={saveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          
+      <div style={{ backgroundColor: 'white', padding: '30px', color: 'black' }}>
+        <h3 style={{ marginTop: 0, fontWeight: '900', borderBottom: '4px solid black', paddingBottom: '10px' }}>[ EDIT_IDENTITY_TERMINAL ]</h3>
+        <form onSubmit={saveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '25px', marginTop: '20px' }}>
+          <div><label style={editLabel}>FULL_NAME</label><input required value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} style={editInput} /></div>
           <div>
-            <label style={labelStyle}>Full Name</label>
-            <input required type="text" value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} style={inputStyle} />
+            <label style={editLabel}>MAJORS_ARRAY (MAX 2)</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+              {AVAILABLE_MAJORS.map(m => (<div key={m} onClick={() => toggleMajor(m)} style={{ ...pillStyle, backgroundColor: form.major.includes(m) ? '#FF9900' : '#eee' }}>{m}</div>))}
+            </div>
           </div>
-
-          <div>
-            <label style={labelStyle}>Majors (Select all that apply)</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {AVAILABLE_MAJORS.map(m => (
-                <div 
-                  key={m} onClick={() => toggleMajor(m)}
-                  style={{ ...pillStyle, background: form.major.includes(m) ? '#FF9900' : '#e2e8f0', color: form.major.includes(m) ? 'white' : 'black' }}
-                >
-                  {m}
-                </div>
+          <div style={{ display: 'flex', gap: '15px' }}>
+            <div style={{flex: 1}}><label style={editLabel}>YEAR_LVL</label><select value={form.year} onChange={e => setForm({...form, year: e.target.value})} style={editInput}><option value={1}>1</option><option value={2}>2</option><option value={3}>3</option><option value={4}>4</option></select></div>
+            <div style={{flex: 1}}><label style={editLabel}>INTAKE_ID</label><input required value={form.intake} onChange={e => setForm({...form, intake: e.target.value})} style={editInput} /></div>
+          </div>
+          <div style={{ border: '3px solid black', padding: '15px', backgroundColor: '#f9f9f9' }}>
+            <label style={editLabel}>SELECT_AVATAR_UNIT</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', marginBottom: '15px' }}>
+              {AVATAR_PRESETS.map(url => ( 
+                <img key={url} src={url} onClick={() => setForm({...form, avatar_url: url})} 
+                style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', border: form.avatar_url === url ? '4px solid #FF9900' : '2px solid black', cursor: 'pointer', backgroundColor: 'white' }} /> 
               ))}
             </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Year</label>
-              <select value={form.year} onChange={e => setForm({...form, year: e.target.value})} style={inputStyle}>
-                <option value={1}>Year 1</option><option value={2}>Year 2</option>
-                <option value={3}>Year 3</option><option value={4}>Year 4</option>
-              </select>
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Intake Trimester</label>
-              <input required type="text" placeholder="e.g. Jan 2026" value={form.intake} onChange={e => setForm({...form, intake: e.target.value})} style={inputStyle} />
+            <div style={{ textAlign: 'center' }}>
+                <label style={uploadBtnStyle}>📁 UPLOAD_CUSTOM_ASSET<input type="file" accept="image/*" onChange={handleFileUpload} style={{ display: 'none' }} /></label>
             </div>
           </div>
-
-          <div>
-            <label style={labelStyle}>Choose an Avatar</label>
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-              {AVATAR_PRESETS.map(url => (
-                <img 
-                  key={url} src={url} onClick={() => setForm({...form, avatar_url: url})} 
-                  style={{ width: '50px', height: '50px', borderRadius: '50%', cursor: 'pointer', border: form.avatar_url === url ? '3px solid #FF9900' : '2px solid transparent' }} 
-                />
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-            <button type="submit" style={{ flex: 2, background: '#FF9900', color: '#111', padding: '12px', borderRadius: '6px', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}>
-              Save Profile
-            </button>
-            {profile && (
-              <button type="button" onClick={() => setIsEditing(false)} style={{ flex: 1, background: '#e2e8f0', color: '#0f172a', padding: '12px', borderRadius: '6px', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}>
-                Cancel
-              </button>
-            )}
+          <div style={{ display: 'flex', gap: '15px' }}>
+            <button type="submit" style={{ ...protoBtn, backgroundColor: '#FF9900', flex: 2 }}>SAVE_IDENTITY</button>
+            <button type="button" onClick={() => setIsEditing(false)} style={{ ...protoBtn, backgroundColor: 'white', flex: 1 }}>CANCEL</button>
           </div>
         </form>
       </div>
     );
   }
 
-  // ==========================================
-  // NORMAL PASSPORT VIEW
-  // ==========================================
   return (
-    <div style={{ padding: '0px' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', background: 'white', borderRadius: '12px' }}>
-        
-        {/* Main ID Card */}
-        <div style={{ background: 'white', padding: '15px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px' }}>
-          <img src={profile?.avatar_url} style={{ width: '70px', height: '70px', borderRadius: '50%', border: '3px solid #FF9900' }} alt="Avatar" />
-          <div style={{ flex: 1 }}>
-            <h3 style={{ margin: 0, fontSize: '20px', color: '#1e293b' }}>{profile?.full_name}</h3>
-            <div style={{ display: 'flex', gap: '8px', marginTop: '5px' }}>
-              <span style={{ background: '#000', color: '#FF9900', fontSize: '11px', fontWeight: 'bold', padding: '3px 10px', borderRadius: '12px' }}>
-                {profile?.tier} Tier
-              </span>
-              <button onClick={() => setIsEditing(true)} style={{ background: '#e2e8f0', border: 'none', borderRadius: '12px', padding: '3px 10px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
-                ✏️ Edit
-              </button>
-            </div>
-          </div>
+    <div style={{ backgroundColor: 'white', position: 'relative', color: 'black' }}>
+      <div style={{ backgroundColor: '#6B38FB', padding: '20px 30px', borderBottom: '4px solid black', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2 style={{ color: 'white', margin: 0, fontSize: '22px', fontWeight: '900', letterSpacing: '2px' }}>BUILDER_PASSPORT_v2.0</h2>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={() => setIsEditing(true)} style={miniBtnStyle}>EDIT</button>
+          <button onClick={handleDeleteAccount} style={{ ...miniBtnStyle, backgroundColor: '#ff4d4d', color: 'white' }}>DEL</button>
         </div>
-
-        {/* Info Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
-          <div style={dataBoxStyle}>
-            <span style={dataLabelStyle}>MEMBER ID</span>
-            <span style={dataValStyle}>{profile?.member_id}</span>
-          </div>
-          <div style={dataBoxStyle}>
-            <span style={dataLabelStyle}>UNIVERSITY EMAIL</span>
-            <span style={{...dataValStyle, fontSize: '11px', wordBreak: 'break-all'}}>{profile?.email}</span>
-          </div>
-          <div style={dataBoxStyle}>
-            <span style={dataLabelStyle}>MAJORS</span>
-            <span style={dataValStyle}>{profile?.major?.join(', ') || 'N/A'}</span>
-          </div>
-          <div style={dataBoxStyle}>
-            <span style={dataLabelStyle}>STATUS</span>
-            <span style={dataValStyle}>Year {profile?.year} • Since {profile?.intake}</span>
-          </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div>
-           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#475569' }}>Cloud Experience (XP)</span>
-              <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#FF9900' }}>{profile?.xp || 0} / 1000</span>
-           </div>
-           <div style={{ width: '100%', height: '10px', background: '#e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
-              <div style={{ width: `${(profile?.xp / 1000) * 100}%`, height: '100%', background: 'linear-gradient(90deg, #FF9900, #ffb84d)', borderRadius: '10px' }}></div>
-           </div>
-        </div>
-
       </div>
+      <div style={{ padding: '35px' }}>
+        <div style={{ display: 'flex', gap: '30px', marginBottom: '40px', alignItems: 'center' }}>
+          <div style={{ border: '4px solid black', padding: '6px', backgroundColor: '#FF9900', boxShadow: '6px 6px 0px black', position: 'relative' }}>
+            <img src={profile?.avatar_url} style={{ width: '120px', height: '120px', display: 'block', backgroundColor: 'white', objectFit: 'cover' }} alt="Avatar" />
+            <div style={screwStyle({top: '2px', left: '2px'})}></div><div style={screwStyle({top: '2px', right: '2px'})}></div><div style={screwStyle({bottom: '2px', left: '2px'})}></div><div style={screwStyle({bottom: '2px', right: '2px'})}></div>
+          </div>
+          <div style={{ flex: 1 }}>
+            <h1 style={{ margin: '0 0 10px 0', fontSize: '36px', fontWeight: '900', color: 'black', textTransform: 'uppercase', lineHeight: '1' }}>{profile?.full_name}</h1>
+            <div style={{ display: 'inline-block', backgroundColor: 'black', color: '#FF9900', padding: '5px 12px', fontWeight: '900', fontSize: '14px', boxShadow: '4px 4px 0px rgba(0,0,0,0.2)', transform: 'rotate(-1deg)' }}>{profile?.tier?.toUpperCase()} BUILDER</div>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '40px' }}>
+          <div style={dataBoxStyle}><label style={dataLabelStyle}>STUDENT_ID</label><div style={dataValStyle}>{profile?.member_id}</div></div>
+          <div style={dataBoxStyle}><label style={dataLabelStyle}>MAJORS_SPEC</label><div style={dataValStyle}>{profile?.major?.join(' + ')}</div></div>
+          <div style={dataBoxStyle}><label style={dataLabelStyle}>CURRENT_STATUS</label><div style={dataValStyle}>YEAR {profile?.year} • {profile?.intake}</div></div>
+          <div style={dataBoxStyle}><label style={dataLabelStyle}>SYSTEM_JOIN_DATE</label><div style={dataValStyle}>{profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : '04/27/2026'}</div></div>
+        </div>
+        <div style={{ border: '4px solid black', padding: '20px', backgroundColor: '#f0f0f0', boxShadow: '6px 6px 0px rgba(0,0,0,0.1)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontWeight: '900', fontSize: '13px' }}><span>&gt; CLOUD_XP_STRENGTH</span><span>{profile?.xp || 0} / 1000 PT</span></div>
+          <div style={{ width: '100%', height: '24px', border: '4px solid black', backgroundColor: 'white', overflow: 'hidden' }}><div style={{ width: `${(profile?.xp / 1000) * 100}%`, height: '100%', backgroundColor: '#FF9900', backgroundImage: 'linear-gradient(90deg, rgba(255,255,255,0.2) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.2) 75%, transparent 75%, transparent)', backgroundSize: '20px 20px' }}></div></div>
+        </div>
+      </div>
+      <div style={{ textAlign: 'center', paddingBottom: '20px', fontSize: '11px', fontWeight: '900', color: '#aaa', letterSpacing: '2px' }}>PROPERTY_OF_AWS_STUDENT_BUILDER_GROUP_DXB</div>
     </div>
   );
 }
 
-const labelStyle = { display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#64748b', marginBottom: '5px' };
-const inputStyle = { width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '14px', boxSizing: 'border-box' };
-const pillStyle = { padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' };
-const dataBoxStyle = { background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' };
-const dataLabelStyle = { fontSize: '10px', color: '#64748b', fontWeight: '900', display: 'block', marginBottom: '4px' };
-const dataValStyle = { fontSize: '13px', fontWeight: 'bold', color: '#0f172a' };
+// STYLES
+const screwStyle = (pos) => ({ position: 'absolute', ...pos, width: '4px', height: '4px', background: 'black', borderRadius: '50%' });
+const dataBoxStyle = { border: '4px solid black', padding: '15px', backgroundColor: 'white', boxShadow: '6px 6px 0px black' };
+const dataLabelStyle = { fontSize: '10px', fontWeight: '900', color: '#888', display: 'block', marginBottom: '6px' };
+const dataValStyle = { fontSize: '16px', fontWeight: '900', color: 'black' };
+const miniBtnStyle = { border: '3px solid black', backgroundColor: 'white', color: 'black', padding: '4px 12px', fontSize: '12px', fontWeight: '900', cursor: 'pointer', boxShadow: '3px 3px 0px black' };
+const editLabel = { display: 'block', fontSize: '12px', fontWeight: '900', color: 'black', marginBottom: '8px' };
+const editInput = { width: '100%', padding: '14px', border: '3px solid black', color: 'black', fontWeight: '900', outline: 'none', backgroundColor: 'white' };
+const pillStyle = { padding: '8px 16px', border: '3px solid black', fontSize: '12px', fontWeight: '900', cursor: 'pointer', color: 'black' };
+const protoBtn = { padding: '16px', border: '4px solid black', fontWeight: '900', cursor: 'pointer', boxShadow: '6px 6px 0px black', color: 'black' };
+const uploadBtnStyle = { cursor: 'pointer', border: '3px solid black', backgroundColor: '#eee', color: 'black', padding: '10px 20px', fontWeight: '900', fontSize: '12px', boxShadow: '4px 4px 0px black', display: 'inline-block' };

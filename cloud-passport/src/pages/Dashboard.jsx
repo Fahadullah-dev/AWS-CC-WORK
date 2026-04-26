@@ -8,84 +8,63 @@ import { signOut } from 'aws-amplify/auth';
 export default function Dashboard({ user }) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Define our pages in order
   const pages = [
-    { id: 'profile', label: 'Identity Profile', component: <Passport user={user} /> },
-    { id: 'scanner', label: 'QR Scanner', component: <Checkin user={user} /> },
-    { id: 'stamps', label: 'Entry Stamps', component: <Stamps user={user} /> },
-    { id: 'map1', label: 'Skill Tree (I)', component: <SkillTree tracksToShow={['Compute', 'Networking']} /> },
-    { id: 'map2', label: 'Skill Tree (II)', component: <SkillTree tracksToShow={['Security', 'AI/ML']} /> }
+    { id: 'profile', label: 'IDENTITY', component: <Passport user={user} /> },
+    { id: 'scanner', label: 'SCANNER', component: <Checkin user={user} /> },
+    { id: 'stamps', label: 'STAMPS', component: <Stamps user={user} /> },
+    { id: 'map1', label: 'SKILLS I', component: <SkillTree tracksToShow={['Compute', 'Networking']} /> },
+    { id: 'map2', label: 'SKILLS II', component: <SkillTree tracksToShow={['Security', 'AI/ML']} /> }
   ];
-
-  const next = () => setCurrentIndex(i => Math.min(i + 1, pages.length - 1));
-  const prev = () => setCurrentIndex(i => Math.max(i - 1, 0));
 
   return (
     <div style={{ 
-      display: 'flex', flexDirection: 'column', alignItems: 'center', 
-      padding: '40px 20px', minHeight: '100vh', width: '100%',
-      background: '#0b1120', overflowY: 'auto'
+      minHeight: '100vh', width: '100%', 
+      backgroundColor: '#f4f4f4', // Off-white like the prototype
+      backgroundImage: 'radial-gradient(#d1d1d1 1px, transparent 1px)', // Subtle grid dots
+      backgroundSize: '20px 20px',
+      padding: '40px 20px',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      fontFamily: '"Courier New", Courier, monospace' // Terminal vibe
     }}>
       
-      {/* Top Navigation Tabs */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '30px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '800px' }}>
+      {/* Prototype-style Navigation */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '30px', flexWrap: 'wrap', justifyContent: 'center' }}>
         {pages.map((p, i) => (
           <button 
             key={p.id} 
-            className={currentIndex === i ? "btn-glow" : "btn-outline"} 
             onClick={() => setCurrentIndex(i)}
+            style={{
+              padding: '10px 20px',
+              border: '2px solid black',
+              backgroundColor: currentIndex === i ? '#FF9900' : 'white',
+              boxShadow: currentIndex === i ? 'none' : '4px 4px 0px black',
+              fontWeight: '900', cursor: 'pointer',
+              transform: currentIndex === i ? 'translate(2px, 2px)' : 'none'
+            }}
           >
             {p.label}
           </button>
         ))}
         <button 
-          className="btn-outline" 
-          style={{ borderColor: '#ff4444', color: '#ff4444', background: 'rgba(255, 68, 68, 0.05)' }}
           onClick={() => signOut()}
+          style={{ padding: '10px 20px', border: '2px solid black', backgroundColor: '#ef4444', color: 'white', fontWeight: '900', boxShadow: '4px 4px 0px black', cursor: 'pointer' }}
         >
-          Logout
+          LOGOUT
         </button>
       </div>
 
-      {/* Main Card Container */}
+      {/* Main Container - The "Passport Board" */}
       <div style={{ 
-        width: '100%', maxWidth: '600px', background: 'white', 
-        borderRadius: '16px', padding: '30px', 
-        boxShadow: '0 25px 50px rgba(0,0,0,0.5)', 
-        minHeight: '550px', position: 'relative' 
+        width: '100%', 
+        maxWidth: '650px', // Increased from 550px
+        backgroundColor: 'white', 
+        border: '4px solid black', // Thicker border
+        boxShadow: '12px 12px 0px rgba(0,0,0,1)', // Deeper shadow
+        padding: '0px', 
+        overflow: 'hidden'
       }}>
-        
-        {/* Render the active component */}
         {pages[currentIndex].component}
-
       </div>
-
-      {/* Bottom Pagination Arrows */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', maxWidth: '600px', marginTop: '25px' }}>
-        <button onClick={prev} disabled={currentIndex === 0} style={{ ...navBtnStyle, opacity: currentIndex === 0 ? 0.3 : 1 }}>
-          ❮ Previous
-        </button>
-        
-        <span style={{ color: '#94a3b8', fontSize: '13px', fontWeight: 'bold' }}>
-          Page {currentIndex + 1} of {pages.length}
-        </span>
-        
-        <button onClick={next} disabled={currentIndex === pages.length - 1} style={{ ...navBtnStyle, opacity: currentIndex === pages.length - 1 ? 0.3 : 1 }}>
-          Next ❯
-        </button>
-      </div>
-
     </div>
   );
 }
-
-const navBtnStyle = {
-  background: 'rgba(255, 255, 255, 0.1)',
-  color: 'white',
-  border: '1px solid rgba(255,255,255,0.2)',
-  padding: '10px 20px',
-  borderRadius: '8px',
-  fontWeight: 'bold',
-  cursor: 'pointer',
-  transition: '0.2s'
-};
