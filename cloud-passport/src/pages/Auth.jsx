@@ -7,7 +7,8 @@ const AVATAR_PRESETS = [
   "/avatars/pfp6.jpg", "/avatars/pfp7.jpg", "/avatars/pfp8.jpg", "/avatars/pfp9.jpg", "/avatars/pfp10.jpg"
 ];
 
-export default function Auth() {
+// NOTE the onAuthSuccess prop here!
+export default function Auth({ onAuthSuccess }) {
   const [view, setView] = useState('login'); 
   const [loading, setLoading] = useState(false);
 
@@ -54,7 +55,10 @@ export default function Auth() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    try { await signIn({ username: email, password }); } 
+    try { 
+      await signIn({ username: email, password }); 
+      onAuthSuccess(); // Fast Transition!
+    } 
     catch (err) { alert(err.message); }
     setLoading(false);
   };
@@ -78,6 +82,7 @@ export default function Auth() {
     try {
       await confirmSignUp({ username: email, confirmationCode: code });
       await signIn({ username: email, password });
+      onAuthSuccess(); // Fast Transition!
     } catch (err) { alert(err.message); }
     setLoading(false);
   };
@@ -86,7 +91,9 @@ export default function Auth() {
     <div style={containerStyle}>
       <div style={cardStyle}>
         {view !== 'login' && (
-          <button onClick={() => setView('login')} style={backBtnStyle}>❮ BACK</button>
+          <button onClick={() => setView('login')} style={backBtnStyle}>
+            <img src="/icons/camera.png" style={{ width: '12px', transform: 'rotate(180deg)' }} alt="back" /> BACK
+          </button>
         )}
         
         <div style={headerStyle}>
@@ -160,7 +167,8 @@ export default function Auth() {
                     </div>
                     <div style={{ textAlign: 'center' }}>
                         <label style={uploadBtnStyle}>
-                            📁 UPLOAD_CUSTOM_ASSET
+                            <img src="/icons/upload.png" style={{ width: '14px', marginRight: '5px', verticalAlign: 'middle' }} alt="upload" />
+                            UPLOAD_CUSTOM_ASSET
                             <input type="file" accept="image/*" onChange={handleFileUpload} style={{ display: 'none' }} />
                         </label>
                     </div>
@@ -184,13 +192,10 @@ export default function Auth() {
 }
 
 // STYLES
-const containerStyle = {
-  minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px',
-  backgroundColor: '#f4f4f4', backgroundImage: 'radial-gradient(#d1d1d1 1px, transparent 1px)', backgroundSize: '20px 20px'
-};
+const containerStyle = { minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px', backgroundColor: '#f4f4f4', backgroundImage: 'radial-gradient(#d1d1d1 1px, transparent 1px)', backgroundSize: '20px 20px' };
 const cardStyle = { width: '100%', maxWidth: '480px', backgroundColor: 'white', border: '4px solid black', boxShadow: '12px 12px 0px black', position: 'relative', color: 'black' };
 const headerStyle = { backgroundColor: '#6B38FB', color: 'white', padding: '20px', borderBottom: '4px solid black', textAlign: 'center' };
-const backBtnStyle = { position: 'absolute', top: '22px', left: '15px', background: 'white', border: '2px solid black', color: 'black', fontWeight: '900', fontSize: '10px', padding: '2px 8px', cursor: 'pointer', zIndex: 10 };
+const backBtnStyle = { position: 'absolute', top: '22px', left: '15px', background: 'white', border: '2px solid black', color: 'black', fontWeight: '900', fontSize: '10px', padding: '5px 10px', cursor: 'pointer', zIndex: 10, display: 'flex', alignItems: 'center', gap: '5px' };
 const formStyle = { display: 'flex', flexDirection: 'column', gap: '20px' };
 const inputGroup = { display: 'flex', flexDirection: 'column', gap: '5px' };
 const labelStyle = { fontSize: '10px', fontWeight: '900', color: 'black', letterSpacing: '0.5px' };

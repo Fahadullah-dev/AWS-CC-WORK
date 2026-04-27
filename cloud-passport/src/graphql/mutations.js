@@ -81,6 +81,7 @@ export const createEvent = /* GraphQL */ `
       track
       xp_reward
       emoji
+      unlocked_skills
       createdAt
       updatedAt
       __typename
@@ -98,6 +99,7 @@ export const updateEvent = /* GraphQL */ `
       track
       xp_reward
       emoji
+      unlocked_skills
       createdAt
       updatedAt
       __typename
@@ -115,6 +117,7 @@ export const deleteEvent = /* GraphQL */ `
       track
       xp_reward
       emoji
+      unlocked_skills
       createdAt
       updatedAt
       __typename

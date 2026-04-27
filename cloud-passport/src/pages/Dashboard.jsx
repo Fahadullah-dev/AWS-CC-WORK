@@ -1,12 +1,18 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { signOut } from 'aws-amplify/auth';
 import Passport from './Passport';
 import Checkin from './Checkin';
 import Stamps from './Stamps';
 import SkillTree from './SkillTree';
-import { signOut } from 'aws-amplify/auth';
 
 export default function Dashboard({ user }) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const navigate = useNavigate();
+
+  // Check if current user is a captain
+  const userEmail = user?.signInDetails?.loginId || '';
+  const isCaptain = ['34675845@student.murdoch.edu.au'].includes(userEmail);
 
   const pages = [
     { id: 'profile', label: 'IDENTITY', component: <Passport user={user} /> },
@@ -19,12 +25,13 @@ export default function Dashboard({ user }) {
   return (
     <div style={{ 
       minHeight: '100vh', width: '100%', 
-      backgroundColor: '#f4f4f4', // Off-white like the prototype
-      backgroundImage: 'radial-gradient(#d1d1d1 1px, transparent 1px)', // Subtle grid dots
+      backgroundColor: '#f4f4f4',
+      backgroundImage: 'radial-gradient(#d1d1d1 1px, transparent 1px)', 
       backgroundSize: '20px 20px',
       padding: '40px 20px',
       display: 'flex', flexDirection: 'column', alignItems: 'center',
-      fontFamily: '"Courier New", Courier, monospace' // Terminal vibe
+      fontFamily: '"Courier New", Courier, monospace',
+      color: 'black'
     }}>
       
       {/* Prototype-style Navigation */}
@@ -37,6 +44,7 @@ export default function Dashboard({ user }) {
               padding: '10px 20px',
               border: '2px solid black',
               backgroundColor: currentIndex === i ? '#FF9900' : 'white',
+              color: 'black',
               boxShadow: currentIndex === i ? 'none' : '4px 4px 0px black',
               fontWeight: '900', cursor: 'pointer',
               transform: currentIndex === i ? 'translate(2px, 2px)' : 'none'
@@ -45,21 +53,36 @@ export default function Dashboard({ user }) {
             {p.label}
           </button>
         ))}
+        
+        {/* HIDDEN CAPTAIN BUTTON */}
+        {isCaptain && (
+          <button 
+            onClick={() => navigate('/admin')}
+            style={{ padding: '10px 20px', border: '2px solid black', backgroundColor: 'black', color: '#FF9900', fontWeight: '900', boxShadow: '4px 4px 0px black', cursor: 'pointer' }}
+          >
+            COMMAND_CENTER
+          </button>
+        )}
+
         <button 
-          onClick={() => signOut()}
+          onClick={async () => {
+            await signOut();
+            window.location.reload();
+          }}
           style={{ padding: '10px 20px', border: '2px solid black', backgroundColor: '#ef4444', color: 'white', fontWeight: '900', boxShadow: '4px 4px 0px black', cursor: 'pointer' }}
         >
           LOGOUT
         </button>
       </div>
-
+      
+      
       {/* Main Container - The "Passport Board" */}
       <div style={{ 
         width: '100%', 
-        maxWidth: '650px', // Increased from 550px
+        maxWidth: '650px', 
         backgroundColor: 'white', 
-        border: '4px solid black', // Thicker border
-        boxShadow: '12px 12px 0px rgba(0,0,0,1)', // Deeper shadow
+        border: '4px solid black', 
+        boxShadow: '12px 12px 0px rgba(0,0,0,1)', 
         padding: '0px', 
         overflow: 'hidden'
       }}>

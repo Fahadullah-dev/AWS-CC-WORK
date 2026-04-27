@@ -4,7 +4,6 @@ import { getCurrentUser, deleteUser as deleteCognitoUser, signOut } from 'aws-am
 import { getUser, listAttendances } from '../graphql/queries';
 import { createUser, updateUser, deleteUser as deleteDBUser } from '../graphql/mutations';
 
-const client = generateClient();
 const AVAILABLE_MAJORS = ['AI', 'CS', 'Cyber', 'BIS', 'Game Dev'];
 const AVATAR_PRESETS = [
   "/avatars/pfp1.jpg", "/avatars/pfp2.jpg", "/avatars/pfp3.jpg", "/avatars/pfp4.jpg", "/avatars/pfp5.jpg",
@@ -12,6 +11,7 @@ const AVATAR_PRESETS = [
 ];
 
 export default function Passport() {
+  const client = generateClient();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -26,12 +26,24 @@ export default function Passport() {
       const { userId, signInDetails } = await getCurrentUser();
       setUserId(userId);
       setUserEmail(signInDetails?.loginId);
-      const res = await client.graphql({ query: getUser, variables: { id: userId } });
-      if (res.data.getUser) {
-        setProfile(res.data.getUser);
-        setForm(res.data.getUser);
-      } else { setIsEditing(true); }
-    } catch (e) { console.error(e); } finally { setLoading(false); }
+      
+      // PARALLEL FETCHING: Hits DB once for user profile and once for attendance at the same time
+      const [userRes, attendanceRes] = await Promise.all([
+        client.graphql({ query: getUser, variables: { id: userId } }),
+        client.graphql({ query: listAttendances, variables: { filter: { userID: { eq: userId } } } })
+      ]);
+      
+      if (userRes.data.getUser) {
+        setProfile(userRes.data.getUser);
+        setForm(userRes.data.getUser);
+      } else { 
+        setIsEditing(true); 
+      }
+    } catch (e) { 
+      console.error(e); 
+    } finally { 
+      setLoading(false); 
+    }
   }
 
   const toggleMajor = (m) => {
@@ -111,7 +123,11 @@ export default function Passport() {
               ))}
             </div>
             <div style={{ textAlign: 'center' }}>
-                <label style={uploadBtnStyle}>📁 UPLOAD_CUSTOM_ASSET<input type="file" accept="image/*" onChange={handleFileUpload} style={{ display: 'none' }} /></label>
+                <label style={uploadBtnStyle}>
+                  <img src="/icons/upload.png" style={{ width: '14px', marginRight: '5px', verticalAlign: 'middle' }} alt="upload" />
+                  UPLOAD_CUSTOM_ASSET
+                  <input type="file" accept="image/*" onChange={handleFileUpload} style={{ display: 'none' }} />
+                </label>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '15px' }}>
@@ -126,7 +142,7 @@ export default function Passport() {
   return (
     <div style={{ backgroundColor: 'white', position: 'relative', color: 'black' }}>
       <div style={{ backgroundColor: '#6B38FB', padding: '20px 30px', borderBottom: '4px solid black', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ color: 'white', margin: 0, fontSize: '22px', fontWeight: '900', letterSpacing: '2px' }}>BUILDER_PASSPORT_v2.0</h2>
+        <h2 style={{ color: 'white', margin: 0, fontSize: '22px', fontWeight: '900', letterSpacing: '2px' }}>BUILDER_E-PASSPORT</h2>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button onClick={() => setIsEditing(true)} style={miniBtnStyle}>EDIT</button>
           <button onClick={handleDeleteAccount} style={{ ...miniBtnStyle, backgroundColor: '#ff4d4d', color: 'white' }}>DEL</button>

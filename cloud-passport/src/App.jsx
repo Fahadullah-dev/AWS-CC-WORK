@@ -1,31 +1,18 @@
-// src/App.jsx
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { getCurrentUser } from 'aws-amplify/auth';
-import { Hub } from 'aws-amplify/utils';
+
+import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
-import Auth from './pages/Auth'; // Or wherever your Auth component is located
+import Admin from './pages/Admin';
+import PublicPassport from './pages/PublicPassport';
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already logged in when the app loads
     checkUser();
-
-    // Listen for authentication events (login, logout, signup)
-    const unsubscribe = Hub.listen('auth', ({ payload }) => {
-      switch (payload.event) {
-        case 'signedIn':
-          checkUser();
-          break;
-        case 'signedOut':
-          setUser(null);
-          break;
-      }
-    });
-
-    return unsubscribe;
   }, []);
 
   async function checkUser() {
@@ -33,20 +20,30 @@ export default function App() {
       const currentUser = await getCurrentUser();
       setUser(currentUser);
     } catch (error) {
-      // User is not logged in
       setUser(null);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   if (loading) {
     return (
-      <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0b1120', color: 'white' }}>
-        <h2>Loading AWS Passport...☁️</h2>
+      <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f4f4f4', color: 'black', fontWeight: '900', fontSize: '20px', backgroundImage: 'radial-gradient(#d1d1d1 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
+        INITIALIZING_NETWORK...
       </div>
     );
   }
 
-  // If we have a user, show the Dashboard. If not, show the Login page.
-  return user ? <Dashboard user={user} /> : <Auth />;
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route 
+          path="/" 
+          element={user ? <Dashboard user={user} /> : <Auth onAuthSuccess={checkUser} />} 
+        />
+        <Route path="/admin" element={user ? <Admin user={user} /> : <Navigate to="/" />} />
+        <Route path="/builder/:slug" element={<PublicPassport />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
