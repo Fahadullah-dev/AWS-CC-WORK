@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { signIn, signUp, confirmSignUp } from 'aws-amplify/auth';
+import { signIn, signUp, confirmSignUp, resendSignUpCode, resetPassword, confirmResetPassword } from 'aws-amplify/auth';
 
 const AVAILABLE_MAJORS = ['AI', 'Computer Science', 'Cybersecurity', 'Business Information Systems', 'Game Dev'];
 const AVATAR_PRESETS = [
@@ -7,72 +7,72 @@ const AVATAR_PRESETS = [
   "/avatars/pfp6.jpg", "/avatars/pfp7.jpg", "/avatars/pfp8.jpg", "/avatars/pfp9.jpg", "/avatars/pfp10.jpg"
 ];
 
-// NOTE the onAuthSuccess prop here!
 export default function Auth({ onAuthSuccess }) {
   const [view, setView] = useState('login'); 
   const [loading, setLoading] = useState(false);
+  const [popup, setPopup] = useState(null); 
+  
+  // NEW: Password Visibility State
+  const [showPassword, setShowPassword] = useState(false);
 
-  // Form States
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [code, setCode] = useState('');
   const [fullName, setFullName] = useState('');
   const [major, setMajor] = useState([]);
   const [year, setYear] = useState(3);
-  const [intake, setIntake] = useState('Jan 2024');
+  const [intake, setIntake] = useState('Jan 2026');
   const [avatarUrl, setAvatarUrl] = useState(AVATAR_PRESETS[0]); 
 
   const toggleMajor = (m) => {
     setMajor(prev => {
       if (prev.includes(m)) return prev.filter(x => x !== m);
-      if (prev.length >= 2) { alert("Max 2 majors allowed"); return prev; }
+      if (prev.length >= 2) { setPopup({ type: 'error', message: "Max 2 majors allowed" }); return prev; }
       return [...prev, m];
     });
-  };
-
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_SIZE = 200; 
-        let width = img.width; let height = img.height;
-        if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } } 
-        else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
-        canvas.width = width; canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        setAvatarUrl(canvas.toDataURL('image/jpeg', 0.9));
-      };
-      img.src = event.target.result;
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     try { 
-      await signIn({ username: email, password }); 
-      onAuthSuccess(); // Fast Transition!
-    } 
-    catch (err) { alert(err.message); }
+      // Amplify v6 returns a NextStep object for unconfirmed users instead of throwing an error
+      const { isSignedIn, nextStep } = await signIn({ username: email, password }); 
+      
+      if (nextStep?.signInStep === 'CONFIRM_SIGN_UP') {
+        setPopup({ type: 'error', message: "Identity not verified. Redirecting to verification terminal..." });
+        setView('confirm');
+      } else if (isSignedIn || nextStep?.signInStep === 'DONE') {
+        onAuthSuccess();
+      }
+    } catch (err) { 
+      // Catch older UserNotConfirmedException just in case
+      if (err.name === 'UserNotConfirmedException') {
+        setPopup({ type: 'error', message: "Identity not verified. Redirecting to verification terminal..." });
+        setView('confirm');
+      } else {
+        setPopup({ type: 'error', message: err.message }); 
+      }
+    }
     setLoading(false);
   };
 
   const handleSignUp = async (e) => {
     e.preventDefault();
-    if (major.length === 0) { alert("Please select at least 1 major."); return; }
+    if (major.length === 0) { setPopup({ type: 'error', message: "Please select at least 1 major." }); return; }
+    
+    const isMurdoch = email.endsWith('@student.murdoch.edu.au') || email.endsWith('@murdoch.edu.au');
+    if (!isMurdoch) {
+      setPopup({ type: 'error', message: "You must use a valid Murdoch University email domain to register." });
+      return;
+    }
+
     setLoading(true);
     try {
-      const profileData = { full_name: fullName, major, year: parseInt(year), intake, avatar_url: avatarUrl };
-      localStorage.setItem('pendingCloudProfile', JSON.stringify(profileData));
       await signUp({ username: email, password, options: { userAttributes: { email } } });
       setView('confirm');
-    } catch (err) { alert(err.message); }
+    } catch (err) { setPopup({ type: 'error', message: err.message }); }
     setLoading(false);
   };
 
@@ -82,27 +82,71 @@ export default function Auth({ onAuthSuccess }) {
     try {
       await confirmSignUp({ username: email, confirmationCode: code });
       await signIn({ username: email, password });
-      onAuthSuccess(); // Fast Transition!
-    } catch (err) { alert(err.message); }
+      onAuthSuccess(); 
+    } catch (err) { setPopup({ type: 'error', message: err.message }); }
+    setLoading(false);
+  };
+
+  const handleResendCode = async () => {
+    try {
+      await resendSignUpCode({ username: email });
+      setPopup({ type: 'success', message: "Verification code re-sent to your email!" });
+    } catch (err) { setPopup({ type: 'error', message: err.message }); }
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await resetPassword({ username: email });
+      setView('reset');
+    } catch (err) { setPopup({ type: 'error', message: err.message }); }
+    setLoading(false);
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await confirmResetPassword({ username: email, confirmationCode: code, newPassword });
+      setPopup({ type: 'success', message: "Password reset successfully. Please login." });
+      setView('login');
+    } catch (err) { setPopup({ type: 'error', message: err.message }); }
     setLoading(false);
   };
 
   return (
     <div style={containerStyle}>
+      
+      {/* CUSTOM BRUTALIST POPUP */}
+      {popup && (
+        <div style={overlayStyle} onClick={() => setPopup(null)}>
+          <div style={popupCardStyle} onClick={e => e.stopPropagation()}>
+            <div style={{ ...popupHeaderStyle, backgroundColor: popup.type === 'error' ? '#ef4444' : '#10b981' }}>
+              [ {popup.type === 'error' ? 'SYSTEM_ERROR' : 'SYSTEM_NOTICE'} ]
+            </div>
+            <div style={popupBodyStyle}>{popup.message}</div>
+            <button onClick={() => setPopup(null)} style={popupBtnStyle}>ACKNOWLEDGE</button>
+          </div>
+        </div>
+      )}
+
       <div style={cardStyle}>
         {view !== 'login' && (
-          <button onClick={() => setView('login')} style={backBtnStyle}>
-            <img src="/icons/camera.png" style={{ width: '12px', transform: 'rotate(180deg)' }} alt="back" /> BACK
-          </button>
+          <button onClick={() => { setView('login'); setShowPassword(false); }} style={backBtnStyle}>❮ BACK</button>
         )}
         
         <div style={headerStyle}>
             <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '900', letterSpacing: '1px' }}>
-                {view === 'login' ? 'LOGIN_TERMINAL' : view === 'signup' ? 'CREATE_PASSPORT' : 'VERIFY_IDENTITY'}
+                {view === 'login' ? 'LOGIN_TERMINAL' : 
+                 view === 'signup' ? 'CREATE_PASSPORT' : 
+                 view === 'confirm' ? 'VERIFY_IDENTITY' : 
+                 view === 'forgot' ? 'RECOVER_ACCESS' : 'SET_NEW_PASSWORD'}
             </h2>
         </div>
 
-        <div style={{ padding: '25px' }}>
+        <div style={{ padding: '30px' }}>
+            {/* LOGIN VIEW */}
             {view === 'login' && (
             <form onSubmit={handleLogin} style={formStyle}>
                 <div style={inputGroup}>
@@ -110,31 +154,71 @@ export default function Auth({ onAuthSuccess }) {
                     <input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} />
                 </div>
                 <div style={inputGroup}>
-                    <label style={labelStyle}>PASSWORD</label>
-                    <input type="password" required value={password} onChange={e => setPassword(e.target.value)} style={inputStyle} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <label style={labelStyle}>PASSWORD</label>
+                        <span onClick={() => setShowPassword(!showPassword)} style={{ fontSize: '10px', fontWeight: '900', cursor: 'pointer', color: '#6B38FB' }}>
+                            {showPassword ? '[HIDE]' : '[SHOW]'}
+                        </span>
+                    </div>
+                    <input type={showPassword ? "text" : "password"} required value={password} onChange={e => setPassword(e.target.value)} style={inputStyle} />
                 </div>
                 <button type="submit" disabled={loading} style={primaryBtnStyle}>
                     {loading ? 'SYNCING...' : 'ACCESS_PASSPORT'}
                 </button>
-                <p style={{ textAlign: 'center', fontSize: '12px', fontWeight: '900', marginTop: '15px' }}>
-                    NEW_BUILDER? <span style={{ color: '#6B38FB', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setView('signup')}>INITIALIZE_HERE</span>
-                </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', fontSize: '11px', fontWeight: '900' }}>
+                    <span style={{ color: '#6B38FB', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setView('forgot')}>FORGOT_PASSWORD?</span>
+                    <span style={{ color: '#FF9900', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setView('signup')}>INITIALIZE_NEW_BUILDER</span>
+                </div>
             </form>
             )}
 
+            {/* FORGOT PASSWORD VIEW */}
+            {view === 'forgot' && (
+            <form onSubmit={handleForgotPassword} style={formStyle}>
+                <p style={{ fontSize: '12px', fontWeight: 'bold' }}>Enter your email to receive a recovery code.</p>
+                <div style={inputGroup}>
+                    <label style={labelStyle}>UNIVERSITY_EMAIL</label>
+                    <input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} />
+                </div>
+                <button type="submit" disabled={loading} style={primaryBtnStyle}>SEND_RECOVERY_CODE</button>
+            </form>
+            )}
+
+            {/* RESET PASSWORD VIEW */}
+            {view === 'reset' && (
+            <form onSubmit={handleResetPassword} style={formStyle}>
+                <div style={inputGroup}>
+                    <label style={labelStyle}>RECOVERY_CODE</label>
+                    <input type="text" required value={code} onChange={e => setCode(e.target.value)} style={inputStyle} />
+                </div>
+                <div style={inputGroup}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <label style={labelStyle}>NEW_PASSWORD</label>
+                        <span onClick={() => setShowPassword(!showPassword)} style={{ fontSize: '10px', fontWeight: '900', cursor: 'pointer', color: '#6B38FB' }}>
+                            {showPassword ? '[HIDE]' : '[SHOW]'}
+                        </span>
+                    </div>
+                    <input type={showPassword ? "text" : "password"} required value={newPassword} onChange={e => setNewPassword(e.target.value)} style={inputStyle} />
+                </div>
+                <button type="submit" disabled={loading} style={primaryBtnStyle}>CONFIRM_NEW_PASSWORD</button>
+            </form>
+            )}
+
+            {/* SIGNUP VIEW */}
             {view === 'signup' && (
             <form onSubmit={handleSignUp} style={formStyle}>
                 <div style={inputGroup}>
-                    <label style={labelStyle}>FULL_NAME</label>
-                    <input type="text" required value={fullName} onChange={e => setFullName(e.target.value)} style={inputStyle} />
+                  <label style={labelStyle}>MURDOCH_EMAIL (@student.murdoch.edu.au)</label>
+                  <input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} />
                 </div>
                 <div style={inputGroup}>
-                    <label style={labelStyle}>MURDOCH_EMAIL</label>
-                    <input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} />
-                </div>
-                <div style={inputGroup}>
-                    <label style={labelStyle}>SECURE_PASSWORD</label>
-                    <input type="password" required value={password} onChange={e => setPassword(e.target.value)} style={inputStyle} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <label style={labelStyle}>SECURE_PASSWORD</label>
+                        <span onClick={() => setShowPassword(!showPassword)} style={{ fontSize: '10px', fontWeight: '900', cursor: 'pointer', color: '#6B38FB' }}>
+                            {showPassword ? '[HIDE]' : '[SHOW]'}
+                        </span>
+                    </div>
+                    <input type={showPassword ? "text" : "password"} required value={password} onChange={e => setPassword(e.target.value)} style={inputStyle} />
                 </div>
                 
                 <div>
@@ -150,27 +234,16 @@ export default function Auth({ onAuthSuccess }) {
                     <div style={{ flex: 1 }}><label style={labelStyle}>YEAR_LVL</label>
                         <select value={year} onChange={e => setYear(e.target.value)} style={inputStyle}><option value={1}>1</option><option value={2}>2</option><option value={3}>3</option><option value={4}>4</option></select>
                     </div>
-                    <div style={{ flex: 1 }}><label style={labelStyle}>INTAKE_ID</label><input required type="text" value={intake} onChange={e => setIntake(e.target.value)} style={inputStyle} /></div>
+                    <div style={{ flex: 1 }}><label style={labelStyle}>INTAKE</label><input required type="text" placeholder="e.g. Jan 2026" value={intake} onChange={e => setIntake(e.target.value)} style={inputStyle} /></div>
                 </div>
 
                 <div style={{ border: '3px solid black', padding: '15px', backgroundColor: '#f9f9f9' }}>
                     <label style={labelStyle}>SELECT_AVATAR_UNIT</label>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px', marginBottom: '15px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
                         {AVATAR_PRESETS.map(url => (
                         <img key={url} src={url} onClick={() => setAvatarUrl(url)} 
-                        style={{ 
-                          width: '100%', aspectRatio: '1/1', objectFit: 'cover',
-                          border: avatarUrl === url ? '4px solid #FF9900' : '2px solid black', 
-                          cursor: 'pointer', backgroundColor: 'white' 
-                        }} />
+                        style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', border: avatarUrl === url ? '4px solid #FF9900' : '2px solid black', cursor: 'pointer' }} />
                         ))}
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                        <label style={uploadBtnStyle}>
-                            <img src="/icons/upload.png" style={{ width: '14px', marginRight: '5px', verticalAlign: 'middle' }} alt="upload" />
-                            UPLOAD_CUSTOM_ASSET
-                            <input type="file" accept="image/*" onChange={handleFileUpload} style={{ display: 'none' }} />
-                        </label>
                     </div>
                 </div>
                 
@@ -178,11 +251,15 @@ export default function Auth({ onAuthSuccess }) {
             </form>
             )}
 
+            {/* CONFIRM VIEW */}
             {view === 'confirm' && (
             <form onSubmit={handleConfirm} style={formStyle}>
-                <label style={{...labelStyle, textAlign: 'center'}}>ENTER_VERIFICATION_CODE</label>
+                <label style={{...labelStyle, textAlign: 'center'}}>ENTER_VERIFICATION_CODE SENT TO EMAIL</label>
                 <input type="text" required value={code} onChange={e => setCode(e.target.value)} style={{ ...inputStyle, textAlign: 'center', fontSize: '28px', letterSpacing: '5px' }} />
                 <button type="submit" disabled={loading} style={primaryBtnStyle}>CONFIRM_IDENTITY</button>
+                <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                  <span onClick={handleResendCode} style={{ fontSize: '11px', fontWeight: '900', color: '#6B38FB', cursor: 'pointer', textDecoration: 'underline' }}>DIDN'T RECEIVE IT? RESEND CODE</span>
+                </div>
             </form>
             )}
         </div>
@@ -191,15 +268,21 @@ export default function Auth({ onAuthSuccess }) {
   );
 }
 
-// STYLES
+// --- STANDARD STYLES ---
 const containerStyle = { minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px', backgroundColor: '#f4f4f4', backgroundImage: 'radial-gradient(#d1d1d1 1px, transparent 1px)', backgroundSize: '20px 20px' };
 const cardStyle = { width: '100%', maxWidth: '480px', backgroundColor: 'white', border: '4px solid black', boxShadow: '12px 12px 0px black', position: 'relative', color: 'black' };
 const headerStyle = { backgroundColor: '#6B38FB', color: 'white', padding: '20px', borderBottom: '4px solid black', textAlign: 'center' };
-const backBtnStyle = { position: 'absolute', top: '22px', left: '15px', background: 'white', border: '2px solid black', color: 'black', fontWeight: '900', fontSize: '10px', padding: '5px 10px', cursor: 'pointer', zIndex: 10, display: 'flex', alignItems: 'center', gap: '5px' };
+const backBtnStyle = { position: 'absolute', top: '22px', left: '15px', background: 'white', border: '2px solid black', color: 'black', fontWeight: '900', fontSize: '10px', padding: '5px 10px', cursor: 'pointer', zIndex: 10 };
 const formStyle = { display: 'flex', flexDirection: 'column', gap: '20px' };
 const inputGroup = { display: 'flex', flexDirection: 'column', gap: '5px' };
 const labelStyle = { fontSize: '10px', fontWeight: '900', color: 'black', letterSpacing: '0.5px' };
 const inputStyle = { width: '100%', padding: '12px', border: '2px solid black', fontWeight: 'bold', outline: 'none', color: 'black', backgroundColor: 'white' };
 const pillStyle = { padding: '6px 12px', border: '2px solid black', fontSize: '11px', fontWeight: '900', cursor: 'pointer', color: 'black' };
 const primaryBtnStyle = { padding: '15px', border: '4px solid black', backgroundColor: '#FF9900', color: 'black', fontWeight: '900', fontSize: '14px', cursor: 'pointer', boxShadow: '5px 5px 0px black' };
-const uploadBtnStyle = { cursor: 'pointer', border: '2px solid black', backgroundColor: 'white', padding: '8px 15px', fontWeight: '900', fontSize: '11px', boxShadow: '3px 3px 0px black', display: 'inline-block', color: 'black' };
+
+// --- NEW POPUP STYLES ---
+const overlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' };
+const popupCardStyle = { backgroundColor: 'white', border: '4px solid black', boxShadow: '12px 12px 0px #FF9900', width: '100%', maxWidth: '400px', textAlign: 'center', overflow: 'hidden' };
+const popupHeaderStyle = { color: 'white', padding: '15px', borderBottom: '4px solid black', fontWeight: '900', fontSize: '16px', letterSpacing: '2px' };
+const popupBodyStyle = { padding: '30px 20px', fontWeight: 'bold', fontSize: '14px', color: 'black', lineHeight: '1.5' };
+const popupBtnStyle = { width: '100%', padding: '15px', backgroundColor: 'black', color: 'white', fontWeight: '900', border: 'none', borderTop: '4px solid black', cursor: 'pointer', fontSize: '14px', letterSpacing: '1px' };

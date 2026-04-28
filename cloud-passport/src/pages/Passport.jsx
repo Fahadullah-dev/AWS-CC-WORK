@@ -4,14 +4,20 @@ import { getCurrentUser, deleteUser as deleteCognitoUser, signOut } from 'aws-am
 import { getUser, listAttendances } from '../graphql/queries';
 import { createUser, updateUser, deleteUser as deleteDBUser } from '../graphql/mutations';
 
-const AVAILABLE_MAJORS = ['AI', 'CS', 'Cyber', 'BIS', 'Game Dev'];
+const AVAILABLE_MAJORS = ['AI', 'Computer Science', 'Cybersecurity', 'Business Information Systems', 'Game Dev'];
 const AVATAR_PRESETS = [
   "/avatars/pfp1.jpg", "/avatars/pfp2.jpg", "/avatars/pfp3.jpg", "/avatars/pfp4.jpg", "/avatars/pfp5.jpg",
   "/avatars/pfp6.jpg", "/avatars/pfp7.jpg", "/avatars/pfp8.jpg", "/avatars/pfp9.jpg", "/avatars/pfp10.jpg"
 ];
 
+const TIER_ICONS = {
+  EXPLORER: '/icons/explorer.png',
+  BUILDER: '/icons/builder.png',
+  ARCHITECT: '/icons/architect.png',
+  PIONEER: '/icons/pioneer.png'
+};
+
 export default function Passport() {
-  const client = generateClient();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -24,10 +30,10 @@ export default function Passport() {
   async function fetchProfile() {
     try {
       const { userId, signInDetails } = await getCurrentUser();
+      const client = generateClient();
       setUserId(userId);
       setUserEmail(signInDetails?.loginId);
       
-      // PARALLEL FETCHING: Hits DB once for user profile and once for attendance at the same time
       const [userRes, attendanceRes] = await Promise.all([
         client.graphql({ query: getUser, variables: { id: userId } }),
         client.graphql({ query: listAttendances, variables: { filter: { userID: { eq: userId } } } })
@@ -36,14 +42,8 @@ export default function Passport() {
       if (userRes.data.getUser) {
         setProfile(userRes.data.getUser);
         setForm(userRes.data.getUser);
-      } else { 
-        setIsEditing(true); 
-      }
-    } catch (e) { 
-      console.error(e); 
-    } finally { 
-      setLoading(false); 
-    }
+      } else { setIsEditing(true); }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   }
 
   const toggleMajor = (m) => {
@@ -76,9 +76,10 @@ export default function Passport() {
     e.preventDefault();
     setLoading(true);
     try {
+      const client = generateClient();
       const studentID = userEmail.split('@')[0];
       const input = { id: userId, email: userEmail, full_name: form.full_name, major: form.major, year: parseInt(form.year), intake: form.intake, avatar_url: form.avatar_url, member_id: studentID };
-      const res = profile ? await client.graphql({ query: updateUser, variables: { input } }) : await client.graphql({ query: createUser, variables: { input: {...input, xp: 0, tier: "Beginner"} } });
+      const res = profile ? await client.graphql({ query: updateUser, variables: { input } }) : await client.graphql({ query: createUser, variables: { input: {...input, xp: 0, tier: "EXPLORER"} } });
       setProfile(profile ? res.data.updateUser : res.data.createUser);
       setIsEditing(false);
     } catch (err) { alert("Save failed: " + err.message); }
@@ -89,6 +90,7 @@ export default function Passport() {
     if (!window.confirm("🚨 PERMANENTLY DELETE ACCOUNT?")) return;
     setLoading(true);
     try {
+      const client = generateClient();
       if (profile) await client.graphql({ query: deleteDBUser, variables: { input: { id: profile.id } } });
       await deleteCognitoUser();
       await signOut();
@@ -110,9 +112,9 @@ export default function Passport() {
               {AVAILABLE_MAJORS.map(m => (<div key={m} onClick={() => toggleMajor(m)} style={{ ...pillStyle, backgroundColor: form.major.includes(m) ? '#FF9900' : '#eee' }}>{m}</div>))}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '15px' }}>
-            <div style={{flex: 1}}><label style={editLabel}>YEAR_LVL</label><select value={form.year} onChange={e => setForm({...form, year: e.target.value})} style={editInput}><option value={1}>1</option><option value={2}>2</option><option value={3}>3</option><option value={4}>4</option></select></div>
-            <div style={{flex: 1}}><label style={editLabel}>INTAKE_ID</label><input required value={form.intake} onChange={e => setForm({...form, intake: e.target.value})} style={editInput} /></div>
+          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+            <div style={{flex: '1 1 100px'}}><label style={editLabel}>YEAR_LVL</label><select value={form.year} onChange={e => setForm({...form, year: e.target.value})} style={editInput}><option value={1}>1</option><option value={2}>2</option><option value={3}>3</option><option value={4}>4</option></select></div>
+            <div style={{flex: '1 1 100px'}}><label style={editLabel}>INTAKE_ID</label><input required value={form.intake} onChange={e => setForm({...form, intake: e.target.value})} style={editInput} /></div>
           </div>
           <div style={{ border: '3px solid black', padding: '15px', backgroundColor: '#f9f9f9' }}>
             <label style={editLabel}>SELECT_AVATAR_UNIT</label>
@@ -139,48 +141,80 @@ export default function Passport() {
     );
   }
 
+  // --- DYNAMIC LEVEL & TIER CALCULATOR ---
+  const currentTotalXp = profile?.xp || 0;
+  const currentLevel = Math.floor(currentTotalXp / 1000) + 1;
+  const xpTowardsNextLevel = currentTotalXp % 1000;
+  
+  let currentTier = "EXPLORER";
+  if (currentLevel >= 21) currentTier = "BUILDER";
+  if (currentLevel >= 41) currentTier = "ARCHITECT";
+  if (currentLevel >= 81) currentTier = "PIONEER";
+
   return (
-    <div style={{ backgroundColor: 'white', position: 'relative', color: 'black' }}>
-      <div style={{ backgroundColor: '#6B38FB', padding: '20px 30px', borderBottom: '4px solid black', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ color: 'white', margin: 0, fontSize: '22px', fontWeight: '900', letterSpacing: '2px' }}>BUILDER_E-PASSPORT</h2>
+    <div style={{ backgroundColor: '#fafafa', position: 'relative', color: 'black', border: '10px solid white' }}>
+      
+      {/* OFFICIAL WATERMARK HEADER */}
+      <div style={{ backgroundColor: 'black', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', borderBottom: '4px solid #FF9900' }}>
+        <h2 style={{ color: 'white', margin: 0, fontSize: '18px', fontWeight: '900', letterSpacing: '3px', textTransform: 'uppercase' }}>OFFICIAL_BUILDER_ID</h2>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button onClick={() => setIsEditing(true)} style={miniBtnStyle}>EDIT</button>
           <button onClick={handleDeleteAccount} style={{ ...miniBtnStyle, backgroundColor: '#ff4d4d', color: 'white' }}>DEL</button>
         </div>
       </div>
-      <div style={{ padding: '35px' }}>
-        <div style={{ display: 'flex', gap: '30px', marginBottom: '40px', alignItems: 'center' }}>
-          <div style={{ border: '4px solid black', padding: '6px', backgroundColor: '#FF9900', boxShadow: '6px 6px 0px black', position: 'relative' }}>
+      
+      <div style={{ padding: '25px' }}>
+        {/* PREMIUM ID HEADER WITH BARCODE EDGE */}
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '30px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <div style={{ border: '4px solid black', padding: '6px', backgroundColor: 'white', boxShadow: '6px 6px 0px #ccc', position: 'relative', minWidth: '100px' }}>
             <img src={profile?.avatar_url} style={{ width: '120px', height: '120px', display: 'block', backgroundColor: 'white', objectFit: 'cover' }} alt="Avatar" />
-            <div style={screwStyle({top: '2px', left: '2px'})}></div><div style={screwStyle({top: '2px', right: '2px'})}></div><div style={screwStyle({bottom: '2px', left: '2px'})}></div><div style={screwStyle({bottom: '2px', right: '2px'})}></div>
+            <div style={screwStyle({top: '4px', left: '4px'})}></div><div style={screwStyle({top: '4px', right: '4px'})}></div><div style={screwStyle({bottom: '4px', left: '4px'})}></div><div style={screwStyle({bottom: '4px', right: '4px'})}></div>
           </div>
-          <div style={{ flex: 1 }}>
-            <h1 style={{ margin: '0 0 10px 0', fontSize: '36px', fontWeight: '900', color: 'black', textTransform: 'uppercase', lineHeight: '1' }}>{profile?.full_name}</h1>
-            <div style={{ display: 'inline-block', backgroundColor: 'black', color: '#FF9900', padding: '5px 12px', fontWeight: '900', fontSize: '14px', boxShadow: '4px 4px 0px rgba(0,0,0,0.2)', transform: 'rotate(-1deg)' }}>{profile?.tier?.toUpperCase()} BUILDER</div>
+          
+          <div style={{ flex: 1, textAlign: 'left', minWidth: '200px' }}>
+            <h1 style={{ margin: '0 0 10px 0', fontSize: '32px', fontWeight: '900', color: 'black', textTransform: 'uppercase', lineHeight: '1', letterSpacing: '-1px' }}>{profile?.full_name}</h1>
+            
+            {/* BADGE WITH ICON */}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', backgroundColor: 'black', color: 'white', padding: '6px 14px', fontWeight: '900', fontSize: '14px', border: '2px solid #FF9900' }}>
+              <img src={TIER_ICONS[currentTier]} alt={currentTier} style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
+              {currentTier} • LVL {currentLevel}
+            </div>
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '40px' }}>
+
+        {/* BRUTALIST STRUCTURED DATA BLOCKS */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '15px', marginBottom: '30px' }}>
           <div style={dataBoxStyle}><label style={dataLabelStyle}>STUDENT_ID</label><div style={dataValStyle}>{profile?.member_id}</div></div>
           <div style={dataBoxStyle}><label style={dataLabelStyle}>MAJORS_SPEC</label><div style={dataValStyle}>{profile?.major?.join(' + ')}</div></div>
-          <div style={dataBoxStyle}><label style={dataLabelStyle}>CURRENT_STATUS</label><div style={dataValStyle}>YEAR {profile?.year} • {profile?.intake}</div></div>
-          <div style={dataBoxStyle}><label style={dataLabelStyle}>SYSTEM_JOIN_DATE</label><div style={dataValStyle}>{profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : '04/27/2026'}</div></div>
+          <div style={dataBoxStyle}><label style={dataLabelStyle}>ACADEMIC_COHORT</label><div style={dataValStyle}>YR {profile?.year} • {profile?.intake}</div></div>
+          <div style={dataBoxStyle}><label style={dataLabelStyle}>SYS_JOIN_DATE</label><div style={dataValStyle}>{profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : '04/27/2026'}</div></div>
         </div>
-        <div style={{ border: '4px solid black', padding: '20px', backgroundColor: '#f0f0f0', boxShadow: '6px 6px 0px rgba(0,0,0,0.1)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontWeight: '900', fontSize: '13px' }}><span>&gt; CLOUD_XP_STRENGTH</span><span>{profile?.xp || 0} / 1000 PT</span></div>
-          <div style={{ width: '100%', height: '24px', border: '4px solid black', backgroundColor: 'white', overflow: 'hidden' }}><div style={{ width: `${(profile?.xp / 1000) * 100}%`, height: '100%', backgroundColor: '#FF9900', backgroundImage: 'linear-gradient(90deg, rgba(255,255,255,0.2) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.2) 75%, transparent 75%, transparent)', backgroundSize: '20px 20px' }}></div></div>
+
+        {/* THICK DYNAMIC XP BAR */}
+        <div style={{ border: '4px solid black', padding: '15px', backgroundColor: 'white', boxShadow: '4px 4px 0px #ccc' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontWeight: '900', fontSize: '12px', flexWrap: 'wrap' }}>
+            <span style={{ color: '#6B38FB' }}>&gt; XP_STRENGTH (LVL {currentLevel})</span>
+            <span>{xpTowardsNextLevel} / 1000 PT</span>
+          </div>
+          <div style={{ width: '100%', height: '24px', border: '3px solid black', backgroundColor: '#eee', overflow: 'hidden' }}>
+            <div style={{ width: `${(xpTowardsNextLevel / 1000) * 100}%`, height: '100%', backgroundColor: '#FF9900', backgroundImage: 'linear-gradient(45deg, rgba(255,255,255,0.2) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.2) 75%, transparent 75%, transparent)', backgroundSize: '15px 15px' }}></div>
+          </div>
         </div>
+        
+        {/* CSS GENERATED BARCODE */}
+        <div style={{ marginTop: '30px', width: '100%', height: '40px', backgroundImage: 'repeating-linear-gradient(90deg, black, black 2px, transparent 2px, transparent 4px, black 4px, black 5px, transparent 5px, transparent 8px, black 8px, black 12px, transparent 12px, transparent 15px)', opacity: 0.8 }}></div>
+        <div style={{ textAlign: 'center', fontSize: '10px', fontWeight: '900', letterSpacing: '10px', marginTop: '5px' }}>{profile?.id?.split('-')[0].toUpperCase()}</div>
       </div>
-      <div style={{ textAlign: 'center', paddingBottom: '20px', fontSize: '11px', fontWeight: '900', color: '#aaa', letterSpacing: '2px' }}>PROPERTY_OF_AWS_STUDENT_BUILDER_GROUP_DXB</div>
     </div>
   );
 }
 
 // STYLES
 const screwStyle = (pos) => ({ position: 'absolute', ...pos, width: '4px', height: '4px', background: 'black', borderRadius: '50%' });
-const dataBoxStyle = { border: '4px solid black', padding: '15px', backgroundColor: 'white', boxShadow: '6px 6px 0px black' };
-const dataLabelStyle = { fontSize: '10px', fontWeight: '900', color: '#888', display: 'block', marginBottom: '6px' };
-const dataValStyle = { fontSize: '16px', fontWeight: '900', color: 'black' };
-const miniBtnStyle = { border: '3px solid black', backgroundColor: 'white', color: 'black', padding: '4px 12px', fontSize: '12px', fontWeight: '900', cursor: 'pointer', boxShadow: '3px 3px 0px black' };
+const dataBoxStyle = { border: '3px solid black', padding: '15px', backgroundColor: 'white' };
+const dataLabelStyle = { fontSize: '10px', fontWeight: '900', color: '#888', display: 'block', marginBottom: '8px', borderBottom: '2px solid #eee', paddingBottom: '4px' };
+const dataValStyle = { fontSize: '14px', fontWeight: '900', color: 'black' };
+const miniBtnStyle = { border: '2px solid white', backgroundColor: 'transparent', color: 'white', padding: '4px 12px', fontSize: '12px', fontWeight: '900', cursor: 'pointer' };
 const editLabel = { display: 'block', fontSize: '12px', fontWeight: '900', color: 'black', marginBottom: '8px' };
 const editInput = { width: '100%', padding: '14px', border: '3px solid black', color: 'black', fontWeight: '900', outline: 'none', backgroundColor: 'white' };
 const pillStyle = { padding: '8px 16px', border: '3px solid black', fontSize: '12px', fontWeight: '900', cursor: 'pointer', color: 'black' };
