@@ -7,6 +7,9 @@ export const onCreateUser = /* GraphQL */ `
       id
       email
       full_name
+      major
+      year
+      intake
       member_id
       public_slug
       xp
@@ -24,6 +27,9 @@ export const onUpdateUser = /* GraphQL */ `
       id
       email
       full_name
+      major
+      year
+      intake
       member_id
       public_slug
       xp
@@ -41,6 +47,9 @@ export const onDeleteUser = /* GraphQL */ `
       id
       email
       full_name
+      major
+      year
+      intake
       member_id
       public_slug
       xp
@@ -60,6 +69,7 @@ export const onCreateEvent = /* GraphQL */ `
       track
       xp_reward
       emoji
+      unlocked_skills
       createdAt
       updatedAt
       __typename
@@ -74,6 +84,7 @@ export const onUpdateEvent = /* GraphQL */ `
       track
       xp_reward
       emoji
+      unlocked_skills
       createdAt
       updatedAt
       __typename
@@ -88,6 +99,7 @@ export const onDeleteEvent = /* GraphQL */ `
       track
       xp_reward
       emoji
+      unlocked_skills
       createdAt
       updatedAt
       __typename

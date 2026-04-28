@@ -1,0 +1,1 @@
+{"scripts":{"build":"cd cloud-passport && npm run build"},"dependencies":{"html5-qrcode":"^2.3.8","qrcode":"^1.5.4","react-router-dom":"^7.14.2"}}

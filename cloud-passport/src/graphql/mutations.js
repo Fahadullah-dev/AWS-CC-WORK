@@ -10,6 +10,9 @@ export const createUser = /* GraphQL */ `
       id
       email
       full_name
+      major
+      year
+      intake
       member_id
       public_slug
       xp
@@ -30,6 +33,9 @@ export const updateUser = /* GraphQL */ `
       id
       email
       full_name
+      major
+      year
+      intake
       member_id
       public_slug
       xp
@@ -50,6 +56,9 @@ export const deleteUser = /* GraphQL */ `
       id
       email
       full_name
+      major
+      year
+      intake
       member_id
       public_slug
       xp
@@ -72,6 +81,7 @@ export const createEvent = /* GraphQL */ `
       track
       xp_reward
       emoji
+      unlocked_skills
       createdAt
       updatedAt
       __typename
@@ -89,6 +99,7 @@ export const updateEvent = /* GraphQL */ `
       track
       xp_reward
       emoji
+      unlocked_skills
       createdAt
       updatedAt
       __typename
@@ -106,6 +117,7 @@ export const deleteEvent = /* GraphQL */ `
       track
       xp_reward
       emoji
+      unlocked_skills
       createdAt
       updatedAt
       __typename

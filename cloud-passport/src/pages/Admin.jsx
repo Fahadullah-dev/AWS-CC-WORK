@@ -1,202 +1,361 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
+import { useNavigate } from 'react-router-dom';
 import { generateClient } from 'aws-amplify/api';
-import { listEvents } from '../graphql/queries';
-import { createEvent } from '../graphql/mutations';
+import { listEvents, listUsers, listAttendances } from '../graphql/queries'; 
+import { createEvent, deleteEvent, updateEvent, deleteUser } from '../graphql/mutations';
 
-// Initialize the AWS GraphQL Client
-const client = generateClient();
-
-const CAPTAIN_EMAILS = [
-  '34675845@student.murdoch.edu.au', // ← replace with real captain email
-  '35044384@student.murdoch.edu.au'
-];
+const CAPTAIN_EMAILS = ['34675845@student.murdoch.edu.au'];
 
 export default function Admin({ user }) {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('EVENTS');
+  const [users, setUsers] = useState([]);
   const [events, setEvents] = useState([]);
-  const [form, setForm] = useState({ name: '', track: 'General', xp_reward: 150, emoji: '☁️' });
-  const [creating, setCreating] = useState(false);
+  const [attendances, setAttendances] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  const [filters, setFilters] = useState({ member_id: '', full_name: '', email: '', major: '', intake: '', attendance: '', joined: '' });
+  const [sortConfig, setSortConfig] = useState({ key: 'joined', direction: 'descending' });
+  const [form, setForm] = useState({ id: null, name: '', track: 'Compute', xp_reward: 150, unlocked_skills: '', emoji: '' });
+  const [isEditing, setIsEditing] = useState(false);
+  const [processing, setProcessing] = useState(false);
   
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [qrEvent, setQrEvent] = useState(null);
   const [timeLeft, setTimeLeft] = useState(15);
-
   const rotateRef = useRef(null);
   const countRef = useRef(null);
 
-  // Extract email from AWS Cognito user object
   const userEmail = user?.signInDetails?.loginId || '';
-  const isCaptain = CAPTAIN_EMAILS.includes(userEmail);
+  const isGroupLeader = CAPTAIN_EMAILS.includes(userEmail);
 
-  // ── Fetch Events from DynamoDB ──
-  useEffect(() => {
-    if (isCaptain) fetchEvents();
-  }, [isCaptain]);
+  useEffect(() => { if (isGroupLeader) fetchData(); }, [isGroupLeader]);
 
-  async function fetchEvents() {
+  async function fetchData() {
+    setLoading(true);
     try {
-      const res = await client.graphql({ query: listEvents });
-      // DynamoDB returns arrays inside `items`
-      setEvents(res.data.listEvents.items || []);
-    } catch (err) {
-      console.error("Error fetching events", err);
-    }
+      const client = generateClient();
+      const [eventsRes, usersRes, attRes] = await Promise.all([
+        client.graphql({ query: listEvents }),
+        client.graphql({ query: listUsers }),
+        client.graphql({ query: listAttendances, variables: { limit: 10000 } })
+      ]);
+      setEvents(eventsRes.data.listEvents.items || []);
+      setUsers(usersRes.data.listUsers.items || []);
+      setAttendances(attRes.data.listAttendances.items || []);
+    } catch (err) { console.error(err); }
+    setLoading(false);
   }
 
-  // ── Auto-rotate QR every 15 seconds while modal open ──
+  const downloadCSV = () => {
+    const headers = "STUDENT_ID,FULL_NAME,EMAIL,MAJORS,INTAKE,JOINED,ATTENDANCE_COUNT,TOTAL_XP\n";
+    const rows = processedRoster.map(u => {
+      const userAtts = attendances.filter(a => a.userID === u.id).length;
+      const safeAttendance = `${userAtts} of ${events.length}`; 
+      return `${u.member_id},"${u.full_name}",${u.email},"${u.major?.join(' + ')}",${u.intake},${new Date(u.createdAt).toLocaleDateString()},"${safeAttendance}",${u.xp || 0}`;
+    }).join("\n");
+
+    const blob = new Blob([headers + rows], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `AWS_Student_Builder_Group_Roster_${new Date().toLocaleDateString()}.csv`;
+    a.click();
+  };
+
+  const handleStampUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 150;
+        let width = img.width; let height = img.height;
+        if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } } else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        setForm(f => ({...f, emoji: canvas.toDataURL('image/png', 0.8)}));
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  async function handleSaveEvent(e) {
+    e.preventDefault();
+    setProcessing(true);
+    try {
+      const client = generateClient();
+      const skillsArray = form.unlocked_skills.split(',').map(s => s.trim()).filter(s => s.length > 0);
+      const input = { name: form.name, track: form.track, xp_reward: form.xp_reward, unlocked_skills: skillsArray, emoji: form.emoji || '' };
+      if (isEditing) await client.graphql({ query: updateEvent, variables: { input: { id: form.id, ...input } } });
+      else await client.graphql({ query: createEvent, variables: { input } });
+      await fetchData(); cancelEdit();
+    } catch (err) { alert("Error saving event."); console.error(err); } 
+    finally { setProcessing(false); }
+  }
+
+  async function handleDeleteEvent(id) {
+    if(!window.confirm("WARNING: Proceed?")) return;
+    setProcessing(true);
+    try {
+      const client = generateClient();
+      await client.graphql({ query: deleteEvent, variables: { input: { id } } });
+      await fetchData();
+    } catch (err) { alert("Error deleting event."); }
+    setProcessing(false);
+  }
+
+  async function handleDeleteUser(userId, userName) {
+    if(!window.confirm(`WARNING: Permanently delete the profile for [${userName}]?`)) return;
+    setProcessing(true);
+    try {
+      const client = generateClient();
+      await client.graphql({ query: deleteUser, variables: { input: { id: userId } } });
+      await fetchData(); 
+    } catch (err) { alert("Error deleting builder profile."); console.error(err); }
+    setProcessing(false);
+  }
+
+  function startEdit(event) {
+    setForm({ id: event.id, name: event.name, track: event.track, xp_reward: event.xp_reward, unlocked_skills: event.unlocked_skills ? event.unlocked_skills.join(', ') : '', emoji: event.emoji || '' });
+    setIsEditing(true); window.scrollTo(0, 0);
+  }
+
+  function cancelEdit() {
+    setForm({ id: null, name: '', track: 'Compute', xp_reward: 150, unlocked_skills: '', emoji: '' });
+    setIsEditing(false);
+  }
+
   useEffect(() => {
     if (!qrEvent) return;
-
     doGenerate(qrEvent);
-
-    rotateRef.current = setInterval(() => {
-      doGenerate(qrEvent);
-      setTimeLeft(15);
-    }, 15000);
-
-    countRef.current = setInterval(() => {
-      setTimeLeft(t => (t <= 1 ? 15 : t - 1));
-    }, 1000);
-
-    return () => {
-      clearInterval(rotateRef.current);
-      clearInterval(countRef.current);
-    };
+    rotateRef.current = setInterval(() => { doGenerate(qrEvent); setTimeLeft(15); }, 15000);
+    countRef.current = setInterval(() => { setTimeLeft(t => (t <= 1 ? 15 : t - 1)); }, 1000);
+    return () => { clearInterval(rotateRef.current); clearInterval(countRef.current); };
   }, [qrEvent?.id]);
 
   async function doGenerate(event) {
-    // We generate a JSON string containing the Event ID and current time.
-    // Checkin.jsx will read this and ensure it's not older than 15 seconds!
-    const token = JSON.stringify({ 
-      eventId: event.id, 
-      timestamp: Date.now() 
-    });
-
     try {
-      const dataUrl = await QRCode.toDataURL(token, {
-        width: 300, margin: 2,
-        color: { dark: '#0D1321', light: '#FFFFFF' }
-      });
+      const token = JSON.stringify({ eventId: event.id, timestamp: Date.now() });
+      const dataUrl = await QRCode.toDataURL(token, { width: 300, margin: 2, color: { dark: '#000000', light: '#FFFFFF' }});
       setQrDataUrl(dataUrl);
-    } catch (err) {
-      console.error("Error generating QR:", err);
-    }
+    } catch (err) { console.error(err); }
   }
 
-  function openQR(event) {
-    setQrEvent(event);
-    setTimeLeft(15);
-  }
+  function openQR(event) { setQrEvent(event); setTimeLeft(15); }
+  function closeQR() { clearInterval(rotateRef.current); clearInterval(countRef.current); setQrEvent(null); setQrDataUrl(''); }
 
-  function closeQR() {
-    clearInterval(rotateRef.current);
-    clearInterval(countRef.current);
-    setQrEvent(null);
-    setQrDataUrl('');
-  }
+  const handleFilterChange = (e, column) => { setFilters(prev => ({ ...prev, [column]: e.target.value })); };
+  const requestSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') direction = 'descending';
+    setSortConfig({ key, direction });
+  };
+  const getSortIndicator = (key) => { if (sortConfig.key === key) return sortConfig.direction === 'ascending' ? ' ↑' : ' ↓'; return ' ↕'; };
 
-  if (!isCaptain) return (
-    <div className="page-wrap">
-      <div className="page-header"><h2 style={{ color: '#0f172a', fontWeight: '900' }}>Admin</h2></div>
-      <div className="muted">Only captains can access this. Your email ({userEmail}) is not authorized.</div>
-    </div>
-  );
+  const uniqueIntakes = [...new Set(users.map(u => u.intake))].filter(Boolean);
+  const uniqueMajors = [...new Set(users.flatMap(u => u.major || []))].filter(Boolean);
 
-  async function handleCreate(e) {
-    e.preventDefault();
-    setCreating(true);
-    try {
-      // Save directly to AWS DynamoDB using the GraphQL Mutation
-      await client.graphql({
-        query: createEvent,
-        variables: { 
-          input: {
-            name: form.name,
-            track: form.track,
-            xp_reward: form.xp_reward,
-            emoji: form.emoji
-          } 
-        }
-      });
-      
-      await fetchEvents();
-      setForm({ name: '', track: 'General', xp_reward: 150, emoji: '☁️' });
-    } catch (err) {
-      console.error("Error creating event:", err);
-      alert("Error creating event. Check console.");
-    } finally {
-      setCreating(false);
-    }
-  }
+  const filteredUsers = users.filter(u => {
+    const userAtts = attendances.filter(a => a.userID === u.id).length;
+    const attString = `${userAtts}/${events.length}`;
+    const joinedString = new Date(u.createdAt).toLocaleDateString();
+    const matchMajor = filters.major ? (u.major || []).includes(filters.major) : true;
+    const matchIntake = filters.intake ? u.intake === filters.intake : true;
+
+    return (
+      (u.member_id || '').toLowerCase().includes(filters.member_id.toLowerCase()) &&
+      (u.full_name || '').toLowerCase().includes(filters.full_name.toLowerCase()) &&
+      (u.email || '').toLowerCase().includes(filters.email.toLowerCase()) &&
+      matchMajor && matchIntake && attString.includes(filters.attendance) && joinedString.includes(filters.joined)
+    );
+  });
+
+  const processedRoster = [...filteredUsers].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+    let aVal = a[sortConfig.key]; let bVal = b[sortConfig.key];
+
+    if (sortConfig.key === 'attendance') { aVal = attendances.filter(att => att.userID === a.id).length; bVal = attendances.filter(att => att.userID === b.id).length; } 
+    else if (sortConfig.key === 'major') { aVal = a.major?.join(', ') || ''; bVal = b.major?.join(', ') || ''; } 
+    else if (sortConfig.key === 'joined') { aVal = new Date(a.createdAt).getTime(); bVal = new Date(b.createdAt).getTime(); } 
+    else { aVal = aVal || ''; bVal = bVal || ''; }
+
+    if (aVal < bVal) return sortConfig.direction === 'ascending' ? -1 : 1;
+    if (aVal > bVal) return sortConfig.direction === 'ascending' ? 1 : -1;
+    return 0;
+  });
+
+  if (!isGroupLeader) return <div style={containerStyle}><div style={cardStyle}><div style={{backgroundColor: '#1a1c21', color: 'white', padding: '25px', borderBottom: '4px solid white'}}><h2 style={{ margin: 0, fontWeight: '900' }}>[ ACCESS_DENIED ]</h2></div></div></div>;
+  const sortedLeaderboard = [...users].sort((a, b) => (b.xp || 0) - (a.xp || 0));
 
   return (
-    <div className="page-wrap" style={{ color: '#0f172a' }}>
-      <div className="page-header">
-        <h2 style={{ color: '#0f172a', fontWeight: '900' }}>admin panel</h2>
-        <span className="badge-captain" style={{ background: '#FF9900', color: '#111', padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold' }}>captain</span>
-      </div>
-
-      {/* create event form */}
-      <div className="admin-section" style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '30px', border: '1px solid #e2e8f0' }}>
-        <h3 style={{ margin: '0 0 15px 0' }}>create event</h3>
-        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <input placeholder="Event Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required style={inputStyle} />
-            <input placeholder="Emoji (☁️)" value={form.emoji} onChange={e => setForm(f => ({ ...f, emoji: e.target.value }))} style={{ ...inputStyle, width: '80px' }} />
-          </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <select value={form.track} onChange={e => setForm(f => ({ ...f, track: e.target.value }))} style={inputStyle}>
-              {['General', 'Compute', 'Networking', 'Security', 'AI/ML'].map(t => <option key={t}>{t}</option>)}
-            </select>
-            <input type="number" placeholder="XP reward" value={form.xp_reward} onChange={e => setForm(f => ({ ...f, xp_reward: Number(e.target.value) }))} style={{ ...inputStyle, width: '100px' }} />
-          </div>
-          <button type="submit" disabled={creating} style={{ background: '#0f172a', color: 'white', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px' }}>
-            {creating ? 'Saving to AWS...' : 'Create Event'}
-          </button>
-        </form>
-      </div>
-
-      {/* events list */}
-      <div className="admin-section">
-        <h3>events ({events.length})</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {events.map(event => (
-            <div key={event.id} style={{ display: 'flex', alignItems: 'center', background: 'white', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <span style={{ fontSize: '24px', marginRight: '15px' }}>{event.emoji}</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 'bold', color: '#0f172a' }}>{event.name}</div>
-                <div style={{ fontSize: '12px', color: '#64748b' }}>{event.track} · {event.xp_reward} XP</div>
-              </div>
-              <button onClick={() => openQR(event)} style={{ background: '#f1f5f9', color: '#0f172a', border: '1px solid #cbd5e1', padding: '8px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
-                📷 Show QR
-              </button>
+    <div style={containerStyle}>
+      <div style={cardStyle}>
+        
+        <div style={{ backgroundColor: '#1a1c21', color: 'white', padding: '25px', borderBottom: '4px solid white', textAlign: 'left' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              {/* REMOVED FILTER */}
+              <img src="/icons/program-icon-magenta.svg" style={{ height: '30px' }} alt="Logo" />
+              <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '900', letterSpacing: '2px' }}>[ SYSTEM_ADMIN_OVERRIDE ]</h2>
             </div>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <span style={{ background: '#ff57f6', color: 'white', padding: '4px 10px', fontSize: '12px', fontWeight: '900', border: '2px solid white' }}>GROUP_LEADER</span>
+              <button onClick={() => navigate('/')} style={miniBtnStyle}><img src="/icons/camera.png" style={{ width: '10px', transform: 'rotate(180deg)', marginRight: '4px' }} alt="back" />DASHBOARD</button>
+            </div>
+          </div>
+          <div style={{ fontSize: '11px', marginTop: '10px', fontWeight: 'bold', color: '#00e87f' }}>TOTAL REGISTERED BUILDERS: {users.length}</div>
+        </div>
+
+        <div style={{ display: 'flex', borderBottom: '4px solid black' }}>
+          {['EVENTS', 'ROSTER', 'LEADERBOARD'].map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)} style={{ flex: 1, padding: '15px', fontWeight: '900', fontSize: '14px', cursor: 'pointer', backgroundColor: activeTab === tab ? 'white' : '#ddd', border: 'none', borderRight: '4px solid black', borderBottom: activeTab === tab ? 'none' : '4px solid black', color: 'black', outline: 'none' }}>{tab}</button>
           ))}
         </div>
+
+        <div style={{ padding: '20px', overflowX: 'auto', color: 'black' }}>
+          {loading ? ( <div style={{ padding: '40px', textAlign: 'center', fontWeight: '900' }}>SYNCING...</div> ) : (
+            <>
+              {activeTab === 'EVENTS' && (
+                <div>
+                  <div style={{ border: '4px solid black', padding: '20px', backgroundColor: isEditing ? '#f8f9fa' : '#f9f9f9', marginBottom: '30px', boxShadow: '6px 6px 0px #3ea1f3' }}>
+                    <h3 style={{ margin: '0 0 15px 0', fontWeight: '900', textTransform: 'uppercase' }}>{isEditing ? 'EDIT_EVENT' : 'DEPLOY_EVENT'}</h3>
+                    <form onSubmit={handleSaveEvent} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                      <input placeholder="EVENT_NAME" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required style={inputStyle} />
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <select value={form.track} onChange={e => setForm(f => ({ ...f, track: e.target.value }))} style={inputStyle}>
+                          {['General', 'Compute', 'Networking', 'Security', 'AI/ML'].map(t => <option key={t}>{t}</option>)}
+                        </select>
+                        <input type="number" placeholder="XP_REWARD" value={form.xp_reward} onChange={e => setForm(f => ({ ...f, xp_reward: Number(e.target.value) }))} style={{ ...inputStyle, width: '150px' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '10px', fontWeight: '900', display: 'block', marginBottom: '5px' }}>SKILLS_UNLOCKED (COMMA SEPARATED)</label>
+                        <input placeholder="e.g. EC2 Basics, Lambda Lab" value={form.unlocked_skills} onChange={e => setForm(f => ({ ...f, unlocked_skills: e.target.value }))} style={inputStyle} />
+                      </div>
+                      <div style={{ padding: '15px', border: '3px dashed black', backgroundColor: 'white' }}>
+                        <label style={{ fontSize: '10px', fontWeight: '900', display: 'block', marginBottom: '10px' }}>CUSTOM_STAMP_ICON (OPTIONAL)</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                          <div style={{ width: '50px', height: '50px', border: '2px solid black', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#eee' }}>
+                            {form.emoji ? <img src={form.emoji} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="Stamp" /> : <span style={{fontSize: '10px', fontWeight: 'bold'}}>NONE</span>}
+                          </div>
+                          <label style={{ cursor: 'pointer', border: '2px solid black', backgroundColor: '#00e87f', padding: '8px 15px', fontWeight: '900', fontSize: '11px', boxShadow: '3px 3px 0px black', color: 'black' }}>
+                            UPLOAD_STAMP_IMAGE
+                            <input type="file" accept="image/*" onChange={handleStampUpload} style={{ display: 'none' }} />
+                          </label>
+                          {form.emoji && <button type="button" onClick={() => setForm(f => ({...f, emoji: ''}))} style={{ border: '2px solid black', background: 'white', padding: '8px 12px', fontWeight: '900', cursor: 'pointer' }}>CLEAR</button>}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                        <button type="submit" disabled={processing} style={{ ...protoBtn, backgroundColor: '#000', color: '#fff', flex: 2 }}>{processing ? 'UPLOADING...' : 'SAVE_EVENT'}</button>
+                        {isEditing && <button type="button" onClick={cancelEdit} style={{ ...protoBtn, backgroundColor: '#fff', color: '#000', flex: 1 }}>CANCEL</button>}
+                      </div>
+                    </form>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    {events.map(event => (
+                      <div key={event.id} style={{ display: 'flex', alignItems: 'center', background: 'white', padding: '15px', border: '3px solid black', boxShadow: '4px 4px 0px rgba(0,0,0,0.1)', flexWrap: 'wrap' }}>
+                        <img src={event.emoji || "/icons/speaker.svg"} style={{ width: '40px', height: '40px', objectFit: 'contain', marginRight: '15px' }} alt="Event" />
+                        <div style={{ flex: 1, minWidth: '200px' }}>
+                          <div style={{ fontWeight: '900', fontSize: '18px', textTransform: 'uppercase' }}>{event.name}</div>
+                          <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#666' }}>{event.track} • {event.xp_reward} XP</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '5px', marginTop: '10px' }}>
+                          <button onClick={() => openQR(event)} style={{ border: '3px solid black', background: '#3ea1f3', color: 'white', padding: '8px 12px', fontWeight: '900', cursor: 'pointer' }}>QR</button>
+                          <button onClick={() => startEdit(event)} style={{ border: '3px solid black', background: 'white', color: 'black', padding: '8px 12px', fontWeight: '900', cursor: 'pointer' }}>EDIT</button>
+                          <button onClick={() => handleDeleteEvent(event.id)} style={{ border: '3px solid black', background: '#ef4444', color: 'white', padding: '8px 12px', fontWeight: '900', cursor: 'pointer' }}>DEL</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'ROSTER' && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '15px' }}>
+                    <button onClick={downloadCSV} style={{ ...protoBtn, backgroundColor: '#ff9900', color: 'black' }}>
+                      <img src="/icons/upload.png" style={{ width: '12px', transform: 'rotate(180deg)', marginRight: '8px' }} alt="Download" />
+                      EXPORT_CSV
+                    </button>
+                  </div>
+                  <table style={tableStyle}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#3ea1f3', color: 'white' }}>
+                        <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('member_id')}>STUDENT_ID{getSortIndicator('member_id')}</th>
+                        <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('full_name')}>FULL_NAME{getSortIndicator('full_name')}</th>
+                        <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('email')}>EMAIL{getSortIndicator('email')}</th>
+                        <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('major')}>MAJORS{getSortIndicator('major')}</th>
+                        <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('intake')}>INTAKE{getSortIndicator('intake')}</th>
+                        <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('attendance')}>ATTENDANCE{getSortIndicator('attendance')}</th>
+                        <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('joined')}>JOINED{getSortIndicator('joined')}</th>
+                        <th style={thStyle}>ACTION</th>
+                      </tr>
+                      <tr style={{ backgroundColor: '#fffbe6' }}>
+                        <th style={{ padding: '5px', border: '3px solid black' }}><input placeholder="Filter..." value={filters.member_id} onChange={e => handleFilterChange(e, 'member_id')} style={filterInputStyle} /></th>
+                        <th style={{ padding: '5px', border: '3px solid black' }}><input placeholder="Filter..." value={filters.full_name} onChange={e => handleFilterChange(e, 'full_name')} style={filterInputStyle} /></th>
+                        <th style={{ padding: '5px', border: '3px solid black' }}><input placeholder="Filter..." value={filters.email} onChange={e => handleFilterChange(e, 'email')} style={filterInputStyle} /></th>
+                        <th style={{ padding: '5px', border: '3px solid black' }}><select value={filters.major} onChange={e => handleFilterChange(e, 'major')} style={filterInputStyle}><option value="">All</option>{uniqueMajors.map(m => <option key={m} value={m}>{m}</option>)}</select></th>
+                        <th style={{ padding: '5px', border: '3px solid black' }}><select value={filters.intake} onChange={e => handleFilterChange(e, 'intake')} style={filterInputStyle}><option value="">All</option>{uniqueIntakes.map(i => <option key={i} value={i}>{i}</option>)}</select></th>
+                        <th style={{ padding: '5px', border: '3px solid black' }}><input placeholder="Filter..." value={filters.attendance} onChange={e => handleFilterChange(e, 'attendance')} style={filterInputStyle} /></th>
+                        <th style={{ padding: '5px', border: '3px solid black' }}><input placeholder="Filter..." value={filters.joined} onChange={e => handleFilterChange(e, 'joined')} style={filterInputStyle} /></th>
+                        <th style={{ padding: '5px', border: '3px solid black', backgroundColor: '#eee' }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {processedRoster.map((u, i) => {
+                        const userAtts = attendances.filter(a => a.userID === u.id).length;
+                        return (
+                          <tr key={u.id} style={{ backgroundColor: i % 2 === 0 ? 'white' : '#f9f9f9' }}>
+                            <td style={tdStyle}>{u.member_id}</td><td style={tdStyle}><strong>{u.full_name}</strong></td><td style={tdStyle}>{u.email}</td><td style={tdStyle}>{u.major?.join(', ')}</td><td style={tdStyle}>{u.intake}</td>
+                            <td style={{ ...tdStyle, fontWeight: '900', textAlign: 'center' }}>{userAtts} / {events.length}</td><td style={tdStyle}>{new Date(u.createdAt).toLocaleDateString()}</td>
+                            <td style={{ ...tdStyle, textAlign: 'center' }}><button onClick={() => handleDeleteUser(u.id, u.full_name)} disabled={processing} style={{ backgroundColor: '#ef4444', color: 'white', border: '2px solid black', padding: '4px 8px', fontWeight: '900', cursor: 'pointer', fontSize: '10px' }}>DEL</button></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {activeTab === 'LEADERBOARD' && (
+                <table style={tableStyle}>
+                  <thead><tr style={{ backgroundColor: '#9b68f6', color: 'white' }}><th style={thStyle}>RANK</th><th style={thStyle}>BUILDER</th><th style={thStyle}>ACADEMIC YR</th><th style={thStyle}>TIER & LVL</th><th style={thStyle}>ATTENDANCE</th><th style={thStyle}>XP</th></tr></thead>
+                  <tbody>
+                    {sortedLeaderboard.map((u, i) => {
+                      const userAtts = attendances.filter(a => a.userID === u.id).length;
+                      const level = Math.floor((u.xp || 0)/1000) + 1;
+                      return (
+                        <tr key={u.id}>
+                          <td style={{ ...tdStyle, fontWeight: '900', textAlign: 'center' }}>
+                            {i === 0 ? <img src="/icons/first.png" alt="1st" style={{ width: '20px', verticalAlign: 'middle' }} /> :
+                             i === 1 ? <img src="/icons/second.png" alt="2nd" style={{ width: '20px', verticalAlign: 'middle' }} /> :
+                             i === 2 ? <img src="/icons/third.png" alt="3rd" style={{ width: '20px', verticalAlign: 'middle' }} /> : 
+                             `#${i + 1}`}
+                          </td>
+                          <td style={tdStyle}><strong>{u.full_name}</strong></td><td style={tdStyle}>YR {u.year}</td><td style={tdStyle}>{u.tier?.toUpperCase()} • LVL {level}</td>
+                          <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 'bold' }}>{userAtts} Events</td><td style={{ ...tdStyle, fontWeight: '900', color: '#9b68f6' }}>{u.xp || 0} PT</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </>
+          )}
+        </div>
       </div>
-
-      {/* rotating QR modal */}
+      
       {qrEvent && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.9)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }} onClick={closeQR}>
-          <div style={{ background: 'white', padding: '30px', borderRadius: '16px', textAlign: 'center', width: '90%', maxWidth: '350px' }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#0f172a', marginBottom: '5px' }}>{qrEvent.emoji} {qrEvent.name}</div>
-            <div style={{ fontSize: '12px', color: '#dc2626', fontWeight: 'bold', marginBottom: '20px' }}>ROTATING EVERY 15s · NO SCREENSHOTS</div>
-
-            {qrDataUrl ? (
-              <img src={qrDataUrl} alt="QR code" style={{ width: '100%', maxWidth: '250px', margin: '0 auto', display: 'block', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
-            ) : (
-              <div style={{ height: '250px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>Generating via AWS...</div>
-            )}
-
-            {/* countdown bar */}
-            <div style={{ marginTop: '20px', fontSize: '14px', fontWeight: 'bold', color: '#0f172a' }}>
-              Refreshes in {timeLeft}s
-              <div style={{ height: '6px', background: '#e2e8f0', borderRadius: '10px', marginTop: '8px', overflow: 'hidden' }}>
-                <div style={{ width: `${(timeLeft / 15) * 100}%`, height: '100%', background: '#FF9900', transition: 'width 1s linear' }} />
-              </div>
-            </div>
-
-            <button onClick={closeQR} style={{ background: '#0f172a', color: 'white', width: '100%', padding: '12px', border: 'none', borderRadius: '8px', fontWeight: 'bold', marginTop: '25px', cursor: 'pointer' }}>Close Modal</button>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0, 0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }} onClick={closeQR}>
+          <div style={{ background: 'white', padding: '30px', border: '6px solid black', boxShadow: '15px 15px 0px #00e87f', textAlign: 'center', width: '90%', maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: '24px', fontWeight: '900', color: 'black', textTransform: 'uppercase', marginBottom: '20px' }}>{qrEvent.name}</div>
+            {qrDataUrl ? <img src={qrDataUrl} alt="QR code" style={{ width: '100%', maxWidth: '280px', margin: '0 auto', display: 'block', border: '4px solid black', padding: '10px' }} /> : <div>GENERATING...</div>}
+            <button onClick={closeQR} style={{ ...protoBtn, width: '100%', marginTop: '25px', backgroundColor: 'black', color: 'white' }}>CLOSE</button>
           </div>
         </div>
       )}
@@ -204,4 +363,21 @@ export default function Admin({ user }) {
   );
 }
 
-const inputStyle = { padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '14px', width: '100%', boxSizing: 'border-box' };
+// AWS BRAND STYLES
+const containerStyle = { 
+  minHeight: '100vh', padding: '40px 20px', color: 'black', backgroundColor: '#1a1c21', 
+  backgroundImage: `
+    linear-gradient(#2d3139 2px, transparent 2px), 
+    linear-gradient(90deg, #2d3139 2px, transparent 2px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280'%3E%3Crect x='0' y='0' width='80' height='80' fill='%23ff9900' opacity='0.8'/%3E%3Crect x='200' y='0' width='80' height='80' fill='%23ff9900' opacity='0.8'/%3E%3Crect x='120' y='0' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='80' y='40' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='160' y='40' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='40' y='80' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='200' y='80' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='120' y='80' width='40' height='40' fill='%23ff57f6' opacity='0.8'/%3E%3Crect x='80' y='120' width='40' height='40' fill='%23ff57f6' opacity='0.8'/%3E%3Crect x='160' y='120' width='40' height='40' fill='%23ff57f6' opacity='0.8'/%3E%3Crect x='0' y='160' width='80' height='80' fill='%23ff9900' opacity='0.8'/%3E%3Crect x='200' y='160' width='80' height='80' fill='%23ff9900' opacity='0.8'/%3E%3Crect x='120' y='200' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3C/svg%3E")
+  `, 
+  backgroundSize: '40px 40px, 40px 40px, 500px 500px', backgroundPosition: '0 0, 0 0, right 50px', backgroundRepeat: 'repeat, repeat, no-repeat', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' 
+};
+const cardStyle = { width: '100%', maxWidth: '1000px', backgroundColor: 'white', border: '4px solid white', boxShadow: '12px 12px 0px black', overflow: 'hidden' };
+const tableStyle = { width: '100%', borderCollapse: 'collapse', border: '4px solid black' };
+const thStyle = { padding: '12px', border: '3px solid black', textAlign: 'left', fontWeight: '900', fontSize: '12px', letterSpacing: '1px' };
+const tdStyle = { padding: '12px', border: '2px solid black', fontSize: '13px', color: 'black' };
+const inputStyle = { padding: '14px', border: '3px solid black', fontSize: '14px', fontWeight: '900', width: '100%', boxSizing: 'border-box', outline: 'none' };
+const filterInputStyle = { width: '100%', padding: '6px', fontSize: '12px', border: '2px solid black', boxSizing: 'border-box', outline: 'none', fontWeight: 'bold' };
+const protoBtn = { padding: '14px', border: '4px solid black', fontWeight: '900', cursor: 'pointer', boxShadow: '4px 4px 0px black', fontSize: '14px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const miniBtnStyle = { border: '2px solid white', backgroundColor: 'transparent', color: 'white', padding: '6px 12px', fontSize: '12px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center' };

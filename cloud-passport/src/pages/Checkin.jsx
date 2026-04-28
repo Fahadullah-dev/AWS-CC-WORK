@@ -1,207 +1,148 @@
-import { useState, useEffect, useRef } from 'react';
-import jsQR from 'jsqr';
+import React, { useState, useEffect } from 'react';
+import { Html5Qrcode } from 'html5-qrcode';
 import { generateClient } from 'aws-amplify/api';
-import { getCurrentUser } from 'aws-amplify/auth';
-import { getEvent, getUser, listAttendances } from '../graphql/queries';
 import { createAttendance, updateUser } from '../graphql/mutations';
+import { getEvent, getUser, listAttendances } from '../graphql/queries';
 
-const client = generateClient();
-
-export default function Checkin() {
-  const [status, setStatus] = useState('idle'); 
-  const [result, setResult] = useState(null);
-  const [errMsg, setErrMsg] = useState('');
+export default function Checkin({ user }) {
+  const client = generateClient();
+  const [scanning, setScanning] = useState(false);
+  const [scanStatus, setScanStatus] = useState('SENSORS_OFFLINE');
   
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const scanInterval = useRef(null);
-  const streamRef = useRef(null); // Keeps track of the active camera stream
-  const containerRef = useRef(null); // Watches if the page is visible
+  // Get the AWS user ID
+  const userId = user?.userId;
 
-  // 1. Camera Control Functions
-  async function startScan() {
-    setStatus('scanning');
-    setErrMsg('');
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      streamRef.current = stream; // Save the stream so we can kill it later
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
-
-      scanInterval.current = setInterval(() => {
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-        if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) return;
-        
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0);
-        
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height);
-        
-        if (code?.data) {
-          stopCamera();
-          handleToken(code.data);
-        }
-      }, 200);
-    } catch (err) {
-      setStatus('error');
-      setErrMsg('Camera access denied. Please allow camera permissions.');
-    }
-  }
-
-  function stopCamera() {
-    // Stop all video tracks completely
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    if (scanInterval.current) {
-      clearInterval(scanInterval.current);
-      scanInterval.current = null;
-    }
-  }
-
-  // 2. Flipbook Visibility Observer (The Bug Fix!)
   useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => {
-      // If the page gets flipped away and the camera is running, kill it!
-      if (!entry.isIntersecting && streamRef.current) {
-        stopCamera();
-        setStatus('idle');
-      }
-    }, { threshold: 0.1 });
-
-    if (containerRef.current) {
-      observer.observe(containerRef.current);
+    let html5QrCode;
+    
+    if (scanning) {
+      html5QrCode = new Html5Qrcode("qr-reader");
+      
+      html5QrCode.start(
+        { facingMode: "environment" }, 
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          html5QrCode.stop();
+          setScanning(false);
+          processScannedCode(decodedText);
+        },
+        (errorMessage) => { /* Silently ignore read errors while aiming */ }
+      ).catch(err => {
+        console.error("Camera access failed", err);
+        setScanStatus("ERROR: CAMERA_ACCESS_DENIED");
+        setScanning(false);
+      });
     }
 
     return () => {
-      observer.disconnect();
-      stopCamera(); // Also kill it if the component unmounts entirely
+      if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().catch(console.error);
+      }
     };
-  }, []);
+  }, [scanning]);
 
-  // 3. AWS GraphQL Logic
-  async function handleToken(qrText) {
-    setStatus('validating');
+  async function processScannedCode(text) {
+    setScanStatus("ANALYZING_PAYLOAD...");
+    
     try {
-      const { userId } = await getCurrentUser();
-      const qrData = JSON.parse(qrText);
-      
-      const now = Date.now();
-      if (now - qrData.timestamp > 15000) {
-        throw new Error("QR Code Expired! Wait for the captain's screen to refresh.");
+      const data = JSON.parse(text);
+      const currentTime = Date.now();
+      const timeDifference = currentTime - data.timestamp;
+
+      // 1. Verify 15-second expiration rule
+      if (timeDifference > 15000) {
+        setScanStatus("CODE_EXPIRED: RE-SCAN_PROJECTOR");
+        return;
       }
 
-      const existing = await client.graphql({
+      setScanStatus("SYNCING_WITH_DATABASE...");
+
+      // 2. Check if the user already collected this stamp (Anti-Cheating)
+      const attendanceCheck = await client.graphql({
         query: listAttendances,
-        variables: { filter: { userID: { eq: userId }, eventID: { eq: qrData.eventId } } }
+        variables: { filter: { userID: { eq: userId }, eventID: { eq: data.eventId } } }
       });
 
-      if (existing.data.listAttendances.items.length > 0) {
-        throw new Error("You already have a stamp for this event!");
+      if (attendanceCheck.data.listAttendances.items.length > 0) {
+        setScanStatus("ERROR: REWARD_ALREADY_CLAIMED");
+        return;
       }
 
-      const eventRes = await client.graphql({
-        query: getEvent,
-        variables: { id: qrData.eventId }
-      });
-      const event = eventRes.data.getEvent;
-      if (!event) throw new Error("Event not found.");
+      // 3. Get Event Details (to know how much XP to give)
+      const eventRes = await client.graphql({ query: getEvent, variables: { id: data.eventId } });
+      const eventData = eventRes.data.getEvent;
+      
+      if (!eventData) {
+        setScanStatus("ERROR: EVENT_NOT_FOUND");
+        return;
+      }
 
-      const userRes = await client.graphql({
-        query: getUser,
-        variables: { id: userId }
-      });
-      const userProfile = userRes.data.getUser;
+      // 4. Get Current User Profile (to calculate new XP)
+      const userProfileRes = await client.graphql({ query: getUser, variables: { id: userId } });
+      const userProfile = userProfileRes.data.getUser;
+      
+      const newXp = (userProfile.xp || 0) + eventData.xp_reward;
+      
+      // Calculate new Tier based on XP
+      let newTier = "Beginner";
+      if (newXp >= 250) newTier = "Intermediate";
+      if (newXp >= 600) newTier = "Advanced";
+      if (newXp >= 1000) newTier = "Expert";
 
-      await client.graphql({
-        query: createAttendance,
-        variables: { input: { userID: userId, eventID: event.id, timestamp: new Date().toISOString() } }
-      });
+      // 5. Run the Smart Transaction (Log attendance AND update profile)
+      await Promise.all([
+        client.graphql({ 
+          query: createAttendance, 
+          variables: { input: { eventID: data.eventId, userID: userId } } 
+        }),
+        client.graphql({
+          query: updateUser,
+          variables: { input: { id: userId, xp: newXp, tier: newTier } }
+        })
+      ]);
 
-      const newXp = userProfile.xp + event.xp_reward;
-      let newTier = userProfile.tier;
-      if (newXp >= 1000) newTier = "Cloud Practitioner";
-      if (newXp >= 2500) newTier = "Solutions Architect";
+      setScanStatus(`SUCCESS: +${eventData.xp_reward} XP UNLOCKED!`);
 
-      await client.graphql({
-        query: updateUser,
-        variables: { input: { id: userId, xp: newXp, tier: newTier } }
-      });
-
-      setStatus('success');
-      setResult({ event_emoji: event.emoji, event_name: event.name, xp_gained: event.xp_reward });
-
-    } catch (err) {
-      setStatus('error');
-      setErrMsg(err.message || "Invalid QR Code format.");
+    } catch (e) {
+      console.error(e);
+      setScanStatus("ERROR: INVALID_PAYLOAD_FORMAT");
     }
   }
 
   return (
-    <div className="page-wrap" ref={containerRef} style={{ color: '#0f172a' }}>
-      <div className="page-header">
-        <h2 style={{ color: '#0f172a', fontWeight: '900', marginTop: 0 }}>VISA ENTRY</h2>
-        <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>SCAN OFFICIAL QR FOR STAMP</span>
+    <div style={{ backgroundColor: 'white', padding: '30px', color: 'black' }}>
+      <h2 style={{ marginTop: 0, fontWeight: '900', fontSize: '20px', borderBottom: '4px solid black', paddingBottom: '15px' }}>
+        [ QR_SCANNER_INIT ]
+      </h2>
+
+      <div style={{ marginTop: '20px' }}>
+        <div style={{ 
+          width: '100%', aspectRatio: '1/1', backgroundColor: '#000', 
+          border: '4px solid black', position: 'relative', overflow: 'hidden',
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{ position: 'absolute', top: '20px', left: '20px', width: '30px', height: '30px', borderTop: '6px solid #FF9900', borderLeft: '6px solid #FF9900', zIndex: 10 }}></div>
+          <div style={{ position: 'absolute', top: '20px', right: '20px', width: '30px', height: '30px', borderTop: '6px solid #FF9900', borderRight: '6px solid #FF9900', zIndex: 10 }}></div>
+          <div style={{ position: 'absolute', bottom: '20px', left: '20px', width: '30px', height: '30px', borderBottom: '6px solid #FF9900', borderLeft: '6px solid #FF9900', zIndex: 10 }}></div>
+          <div style={{ position: 'absolute', bottom: '20px', right: '20px', width: '30px', height: '30px', borderBottom: '6px solid #FF9900', borderRight: '6px solid #FF9900', zIndex: 10 }}></div>
+
+          <div id="qr-reader" style={{ width: '100%', height: '100%', display: scanning ? 'block' : 'none' }}></div>
+
+          {!scanning && (
+            <div style={{ textAlign: 'center', zIndex: 5 }}>
+              <button onClick={() => { setScanning(true); setScanStatus("CALIBRATING_OPTICS..."); }}
+                style={{ backgroundColor: '#FF9900', color: 'black', border: '3px solid black', padding: '12px 24px', fontWeight: '900', fontSize: '14px', cursor: 'pointer', boxShadow: '4px 4px 0px white', display: 'flex', alignItems: 'center', gap: '10px', margin: '0 auto' }}>
+                <img src="/icons/camera.png" alt="Camera" style={{ width: '20px', height: '20px' }} />
+                ACTIVATE_CAMERA
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginTop: '20px', padding: '15px', backgroundColor: scanStatus.includes('SUCCESS') ? '#10b981' : scanStatus.includes('ERROR') || scanStatus.includes('EXPIRED') ? '#ef4444' : '#f0f0f0', border: '3px solid black', color: scanStatus.includes('SUCCESS') || scanStatus.includes('ERROR') || scanStatus.includes('EXPIRED') ? 'white' : 'black', textAlign: 'center', fontWeight: '900', fontSize: '12px', letterSpacing: '1px' }}>
+          STATUS: {scanStatus}
+        </div>
       </div>
-
-      {status === 'idle' && (
-        <div style={{ textAlign: 'center', marginTop: '40px' }}>
-          <div style={{ fontSize: '60px', marginBottom: '20px' }}>📷</div>
-          <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '30px' }}>Scan the live event QR code provided by your Cloud Club Captain.</p>
-          <button onClick={startScan} style={{ background: '#FF9900', color: '#111', border: 'none', padding: '12px 24px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
-            Activate Scanner
-          </button>
-        </div>
-      )}
-
-      {status === 'scanning' && (
-        <div style={{ position: 'relative', width: '100%', maxWidth: '300px', margin: '20px auto', borderRadius: '12px', overflow: 'hidden', border: '4px solid #FF9900' }}>
-          <video ref={videoRef} style={{ width: '100%', display: 'block' }} muted playsInline />
-          <canvas ref={canvasRef} style={{ display: 'none' }} />
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, boxShadow: 'inset 0 0 0 50px rgba(0,0,0,0.5)', pointerEvents: 'none' }}>
-            <div style={{ width: '200px', height: '200px', border: '2px dashed #fff', margin: 'auto', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
-          </div>
-          <button onClick={() => { stopCamera(); setStatus('idle'); }} style={{ position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)', background: '#ef4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', zIndex: 10 }}>
-            Cancel
-          </button>
-        </div>
-      )}
-
-      {status === 'validating' && (
-        <div style={{ textAlign: 'center', marginTop: '60px', color: '#FF9900', fontWeight: 'bold' }}>
-          Validating against AWS Database... ⏳
-        </div>
-      )}
-
-      {status === 'error' && (
-        <div style={{ textAlign: 'center', marginTop: '40px', background: '#fef2f2', border: '1px solid #f87171', padding: '20px', borderRadius: '8px' }}>
-          <div style={{ fontSize: '40px', marginBottom: '10px' }}>❌</div>
-          <h3 style={{ color: '#b91c1c', margin: '0 0 10px 0' }}>Scan Failed</h3>
-          <p style={{ color: '#991b1b', fontSize: '14px', margin: '0 0 20px 0' }}>{errMsg}</p>
-          <button onClick={() => setStatus('idle')} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Try Again</button>
-        </div>
-      )}
-
-      {status === 'success' && result && (
-        <div style={{ textAlign: 'center', marginTop: '30px', background: '#f0fdf4', border: '1px solid #4ade80', padding: '30px', borderRadius: '12px' }}>
-          <div style={{ fontSize: '60px', marginBottom: '10px', animation: 'bounce 1s infinite' }}>{result.event_emoji || '☁️'}</div>
-          <h3 style={{ color: '#166534', fontSize: '24px', margin: '0 0 5px 0', fontWeight: '900' }}>STAMPED!</h3>
-          <div style={{ color: '#15803d', fontWeight: 'bold', marginBottom: '15px' }}>{result.event_name}</div>
-          <div style={{ display: 'inline-block', background: '#22c55e', color: 'white', padding: '6px 15px', borderRadius: '20px', fontWeight: '900', fontSize: '14px', marginBottom: '25px' }}>
-            +{result.xp_gained} XP
-          </div>
-          <br/>
-          <button onClick={() => setStatus('idle')} style={{ background: '#16a34a', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Close Scanner</button>
-        </div>
-      )}
     </div>
   );
 }

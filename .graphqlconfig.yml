@@ -1,12 +1,15 @@
 projects:
   cloudpassport:
-    schemaPath: src/graphql/schema.json
+    schemaPath: amplify/backend/api/cloudpassport/build/schema.graphql
     includes:
-      - src/graphql/**/*.js
+      - cloud-passport/src/graphql/**/*.js
     excludes:
       - ./amplify/**
     extensions:
       amplify:
         codeGenTarget: javascript
         generatedFileName: ''
-        docsFilePath: src/graphql
+        docsFilePath: cloud-passport/src/graphql
+extensions:
+  amplify:
+    version: 3

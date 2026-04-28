@@ -1,91 +1,68 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/api';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { listEvents, listAttendances } from '../graphql/queries';
 
-const client = generateClient();
-
-const TRACK_COLORS = {
-  Compute:    { bg: 'rgba(255,153,0,0.1)',  border: 'rgba(255,153,0,0.4)',  text: '#C87000' },
-  Networking: { bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.4)', text: '#2563EB' },
-  Security:   { bg: 'rgba(29,158,117,0.1)', border: 'rgba(29,158,117,0.4)', text: '#0F6E56' },
-  'AI/ML':    { bg: 'rgba(168,85,247,0.1)', border: 'rgba(168,85,247,0.4)', text: '#7C3AED' },
-  General:    { bg: 'rgba(136,135,128,0.1)',border: 'rgba(136,135,128,0.4)',text: '#5F5E5A' },
-};
-
 export default function Stamps() {
-  const [attendedEventIds, setAttendedEventIds] = useState([]);
-  const [events, setEvents] = useState([]);
+  const [stamps, setStamps] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchStampsData();
+    async function loadStamps() {
+      try {
+        const client = generateClient();
+        const { userId } = await getCurrentUser();
+        const [eRes, aRes] = await Promise.all([
+          client.graphql({ query: listEvents }),
+          client.graphql({ query: listAttendances, variables: { filter: { userID: { eq: userId } } } })
+        ]);
+
+        const allEvents = eRes.data.listEvents.items;
+        const myAtts = aRes.data.listAttendances.items;
+
+        const merged = allEvents.map(event => ({
+          ...event,
+          collected: myAtts.some(a => a.eventID === event.id)
+        }));
+        setStamps(merged);
+      } catch (err) { console.error(err); } finally { setLoading(false); }
+    }
+    loadStamps();
   }, []);
 
-  async function fetchStampsData() {
-    try {
-      const { userId } = await getCurrentUser();
-      
-      // Fetch all events
-      const eventsRes = await client.graphql({ query: listEvents });
-      setEvents(eventsRes.data.listEvents.items || []);
+  if (loading) return <div style={{ padding: '50px', textAlign: 'center', fontWeight: '900', color: 'black' }}>SYNCING_REWARDS...</div>;
 
-      // Fetch user's attendances
-      const attendancesRes = await client.graphql({
-        query: listAttendances,
-        variables: { filter: { userID: { eq: userId } } }
-      });
-      
-      const ids = (attendancesRes.data.listAttendances.items || []).map(a => a.eventID);
-      setAttendedEventIds(ids);
-    } catch (err) {
-      console.error("Error fetching stamps:", err);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const coreStamps = stamps.filter(s => s.track !== 'General');
+  const generalStamps = stamps.filter(s => s.track === 'General');
 
-  const earnedCount = events.filter(e => attendedEventIds.includes(e.id)).length;
-
-  if (loading) return <div style={{ color: '#64748b', textAlign: 'center', marginTop: '20px' }}>Loading stamps...</div>;
+  const StampGrid = ({ data, title }) => (
+    <div style={{ marginBottom: '30px' }}>
+      <h3 style={{ fontSize: '14px', fontWeight: '900', backgroundColor: 'black', color: 'white', display: 'inline-block', padding: '5px 15px', marginBottom: '15px' }}>{title}</h3>
+      {data.length === 0 ? (
+        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#999' }}>NO_DATA_FOUND</div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '15px' }}>
+          {data.map(s => (
+            <div key={s.id} style={{ border: s.collected ? '3px solid black' : '2px dashed #ccc', padding: '15px 5px', textAlign: 'center', backgroundColor: s.collected ? 'white' : '#f9f9f9', position: 'relative' }}>
+              <img src={s.emoji || "/icons/event-default.png"} style={{ width: '45px', height: '45px', objectFit: 'contain', marginBottom: '10px', filter: s.collected ? 'none' : 'grayscale(1) opacity(0.2)' }} alt="stamp" />
+              <div style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase' }}>{s.name}</div>
+              {s.collected && (
+                <div style={{ position: 'absolute', top: '-8px', right: '-8px', backgroundColor: '#FF9900', border: '2px solid black', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '2px 2px 0px black' }}>
+                  <img src="/icons/check.png" style={{ width: '12px' }} alt="check" />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
   return (
-    <div className="page-wrap" style={{ color: '#0f172a' }}>
-      <div className="page-header" style={{ marginBottom: '20px' }}>
-        <h2 style={{ color: '#0f172a', fontWeight: '900', marginTop: 0, marginBottom: '5px' }}>Visa Stamps</h2>
-        <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>{earnedCount} / {events.length} EARNED</span>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '15px' }}>
-        {events.map(event => {
-          const earned = attendedEventIds.includes(event.id);
-          const colors = TRACK_COLORS[event.track] || TRACK_COLORS.General;
-          
-          return (
-            <div
-              key={event.id}
-              style={{
-                background: earned ? colors.bg : 'transparent',
-                border: earned ? `2px solid ${colors.border}` : '1px dashed #cbd5e1',
-                borderRadius: '8px',
-                padding: '15px 10px',
-                textAlign: 'center',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <div style={{ fontSize: '30px', opacity: earned ? 1 : 0.2, marginBottom: '8px' }}>
-                {event.emoji}
-              </div>
-              <div style={{ color: earned ? colors.text : '#94a3b8', fontSize: '11px', fontWeight: 'bold', lineHeight: '1.2' }}>
-                {event.name}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+    <div style={{ padding: '30px', backgroundColor: 'white', color: 'black' }}>
+      <h2 style={{ borderBottom: '4px solid black', paddingBottom: '10px', marginTop: 0, fontWeight: '900' }}>[ STAMP_LOG ]</h2>
+      <StampGrid data={coreStamps} title="CORE_TRACK_MISSIONS" />
+      <StampGrid data={generalStamps} title="GENERAL_OPERATIONS (Hackathons, Speakers)" />
     </div>
   );
 }

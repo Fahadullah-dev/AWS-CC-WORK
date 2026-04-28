@@ -1,115 +1,95 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/api';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { listEvents, listAttendances } from '../graphql/queries';
 
-const client = generateClient();
-
-const ALL_TRACKS = [
-  { name: 'Compute',    icon: '☁️',  color: '#FF9900', events: ['EC2 Basics', 'Lambda Lab', 'Containers 101', 'EKS Workshop', 'Compute Master'] },
-  { name: 'Networking', icon: '🌐',  color: '#3B82F6', events: ['VPC Basics', 'VPC Deep Dive', 'Route 53 Lab', 'CloudFront CDN', 'Net Master'] },
-  { name: 'Security',   icon: '🔐',  color: '#1D9E75', events: ['IAM Basics', 'SCPs & Policies', 'GuardDuty Lab', 'Shield WAF', 'Sec Master'] },
-  { name: 'AI/ML',      icon: '🤖',  color: '#A855F7', events: ['AI/ML Intro', 'SageMaker Lab', 'Bedrock Workshop', 'AI Master'] },
-];
+const SKILL_ICONS = { Compute: '/icons/compute.png', Networking: '/icons/network.png', Security: '/icons/security.png', 'AI/ML': '/icons/ai.png' };
 
 export default function SkillTree({ tracksToShow }) {
-  const [attendedEventNames, setAttendedEventNames] = useState([]);
-  const visibleTracks = ALL_TRACKS.filter(t => tracksToShow.includes(t.name));
+  const [loading, setLoading] = useState(true);
+  const [availableSkills, setAvailableSkills] = useState({}); 
+  const [unlockedSkillNames, setUnlockedSkillNames] = useState(new Set());
 
-  useEffect(() => {
-    fetchSkillData();
-  }, []);
+  useEffect(() => { fetchSkillProgress(); }, []);
 
-  async function fetchSkillData() {
+  async function fetchSkillProgress() {
     try {
+      const client = generateClient();
       const { userId } = await getCurrentUser();
       
-      // 1. Get all attendances for the user
-      const attRes = await client.graphql({
-        query: listAttendances,
-        variables: { filter: { userID: { eq: userId } } }
+      const [eventsRes, attRes] = await Promise.all([
+        client.graphql({ query: listEvents }),
+        client.graphql({ query: listAttendances, variables: { filter: { userID: { eq: userId } } } })
+      ]);
+
+      const allEvents = eventsRes.data.listEvents.items || [];
+      const myAttendances = attRes.data.listAttendances.items || [];
+
+      // Build the Open World Map
+      const dynamicMap = { Compute: [], Networking: [], Security: [], 'AI/ML': [], General: [] };
+      allEvents.forEach(e => {
+        if (dynamicMap[e.track] && e.unlocked_skills) {
+          e.unlocked_skills.forEach(skill => {
+            const cleanSkill = skill.trim();
+            if (cleanSkill && !dynamicMap[e.track].includes(cleanSkill)) dynamicMap[e.track].push(cleanSkill);
+          });
+        }
       });
-      const attendedIds = attRes.data.listAttendances.items.map(a => a.eventID);
+      setAvailableSkills(dynamicMap);
 
-      // 2. Get all events
-      const eventsRes = await client.graphql({ query: listEvents });
-      const allEvents = eventsRes.data.listEvents.items;
+      // Map Unlocked Skills
+      const unlockedSet = new Set();
+      myAttendances.forEach(att => {
+        const eventInfo = allEvents.find(e => e.id === att.eventID);
+        if (eventInfo && eventInfo.unlocked_skills) {
+          eventInfo.unlocked_skills.forEach(skill => unlockedSet.add(skill.trim()));
+        }
+      });
+      setUnlockedSkillNames(unlockedSet);
 
-      // 3. Map attended IDs to their actual Event Names
-      const names = attendedIds.map(id => {
-        const found = allEvents.find(e => e.id === id);
-        return found ? found.name : null;
-      }).filter(Boolean);
-
-      setAttendedEventNames(names);
-    } catch (err) {
-      console.error("Error fetching skill tree:", err);
-    }
+    } catch (err) { console.error(err); } finally { setLoading(false); }
   }
 
+  if (loading) return <div style={{ padding: '50px', textAlign: 'center', fontWeight: '900', color: 'black' }}>GENERATING_MAP...</div>;
+
   return (
-    <div className="page-wrap" style={{ padding: '0px' }}>
-      <div className="tracks">
-        {visibleTracks.map(track => {
-          const completed = track.events.filter(e => attendedEventNames.includes(e));
-          const pct = Math.round((completed.length / track.events.length) * 100);
-          
-          return (
-            <div key={track.name} style={{ marginBottom: '35px' }}>
-              
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
-                <span style={{ fontSize: '24px', marginRight: '10px' }}>{track.icon}</span>
-                <span style={{ fontWeight: '900', color: '#0f172a', fontSize: '18px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {track.name}
-                </span>
-                <span style={{ marginLeft: 'auto', fontSize: '13px', color: '#64748b', fontWeight: 'bold' }}>
-                  {completed.length}/{track.events.length}
-                </span>
-              </div>
+    <div style={{ backgroundColor: 'white', padding: '30px', color: 'black' }}>
+      <h2 style={{ marginTop: 0, fontWeight: '900', fontSize: '20px', borderBottom: '4px solid black', paddingBottom: '15px' }}>[ OPEN_WORLD_SKILLS ]</h2>
 
-              <div style={{ background: '#f1f5f9', borderRadius: '99px', height: '8px', marginBottom: '20px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-                <div style={{ width: `${pct}%`, background: track.color, height: '100%', borderRadius: '99px', transition: 'width 0.5s ease' }} />
-              </div>
+      {tracksToShow.map((trackName) => {
+        const skillsInThisTrack = availableSkills[trackName] || [];
+        if (skillsInThisTrack.length === 0) return null; 
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative' }}>
-                {track.events.map((evt, i) => {
-                  const done = attendedEventNames.includes(evt);
-                  
-                  return (
-                    <div key={evt} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, position: 'relative' }}>
-                      {i > 0 && (
-                        <div style={{ position: 'absolute', top: '15px', left: '-50%', right: '50%', height: '2px', background: done ? track.color : '#e2e8f0', zIndex: 1 }} />
-                      )}
-                      
-                      <div style={{
-                        width: '32px', height: '32px', borderRadius: '50%',
-                        border: `2px solid ${done ? track.color : '#cbd5e1'}`,
-                        background: done ? `${track.color}15` : '#ffffff',
-                        color: done ? track.color : '#cbd5e1',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '12px', fontWeight: '900', zIndex: 2,
-                        boxShadow: done ? `0 0 10px ${track.color}30` : 'none'
-                      }}>
-                        {done ? '✓' : i + 1}
-                      </div>
-                      
-                      <div style={{ fontSize: '10px', color: done ? '#0f172a' : '#94a3b8', marginTop: '8px', textAlign: 'center', fontWeight: done ? '800' : '600', lineHeight: '1.2' }}>
-                        {evt.split(' ').slice(0, 2).join(' ')}
-                      </div>
-                    </div>
-                  );
-                })}
+        const unlockedCount = skillsInThisTrack.filter(s => unlockedSkillNames.has(s)).length;
+
+        return (
+          <div key={trackName} style={{ marginBottom: '50px', marginTop: '25px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <img src={SKILL_ICONS[trackName] || '/icons/cloud-icon.png'} alt={trackName} style={{ width: '32px', height: '32px' }} />
+                <h3 style={{ margin: 0, fontWeight: '900', fontSize: '20px', textTransform: 'uppercase' }}>{trackName}</h3>
               </div>
-              
-              {pct === 100 && (
-                <div style={{ marginTop: '15px', textAlign: 'center', color: track.color, fontSize: '12px', fontWeight: '900', textTransform: 'uppercase' }}>
-                  🏆 {track.name} Mastery Complete
-                </div>
-              )}
+              <span style={{ fontWeight: '900', fontSize: '11px', border: '3px solid black', padding: '4px 10px', backgroundColor: '#f0f0f0' }}>UNLOCKED: {unlockedCount}/{skillsInThisTrack.length}</span>
             </div>
-          );
-        })}
-      </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', padding: '15px', backgroundColor: '#fafafa', border: '2px dashed #ccc' }}>
+              {skillsInThisTrack.map((skillName) => {
+                const isUnlocked = unlockedSkillNames.has(skillName);
+                return (
+                  <div key={skillName} style={{ 
+                    flex: '1 1 100px', minWidth: '100px', border: isUnlocked ? '3px solid black' : '2px dashed #aaa',
+                    backgroundColor: isUnlocked ? '#FF9900' : 'white', padding: '15px 10px', textAlign: 'center',
+                    boxShadow: isUnlocked ? '4px 4px 0px black' : 'none', transform: isUnlocked ? 'translate(-2px, -2px)' : 'none', transition: '0.2s'
+                  }}>
+                    {isUnlocked ? <img src="/icons/check.png" alt="done" style={{ width: '24px', marginBottom: '5px' }} /> : <div style={{ width: '24px', height: '24px', border: '2px solid #ccc', borderRadius: '50%', margin: '0 auto 5px auto' }} />}
+                    <div style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: isUnlocked ? 'black' : '#888' }}>{skillName}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
