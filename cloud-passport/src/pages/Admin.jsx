@@ -3,7 +3,6 @@ import QRCode from 'qrcode';
 import { useNavigate } from 'react-router-dom';
 import { generateClient } from 'aws-amplify/api';
 import { listEvents, listUsers, listAttendances } from '../graphql/queries'; 
-// Added deleteUser here!
 import { createEvent, deleteEvent, updateEvent, deleteUser } from '../graphql/mutations';
 
 const CAPTAIN_EMAILS = ['34675845@student.murdoch.edu.au'];
@@ -18,7 +17,6 @@ export default function Admin({ user }) {
   
   const [filters, setFilters] = useState({ member_id: '', full_name: '', email: '', major: '', intake: '', attendance: '', joined: '' });
   const [sortConfig, setSortConfig] = useState({ key: 'joined', direction: 'descending' });
-  
   const [form, setForm] = useState({ id: null, name: '', track: 'Compute', xp_reward: 150, unlocked_skills: '', emoji: '' });
   const [isEditing, setIsEditing] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -30,9 +28,9 @@ export default function Admin({ user }) {
   const countRef = useRef(null);
 
   const userEmail = user?.signInDetails?.loginId || '';
-  const isCaptain = CAPTAIN_EMAILS.includes(userEmail);
+  const isGroupLeader = CAPTAIN_EMAILS.includes(userEmail);
 
-  useEffect(() => { if (isCaptain) fetchData(); }, [isCaptain]);
+  useEffect(() => { if (isGroupLeader) fetchData(); }, [isGroupLeader]);
 
   async function fetchData() {
     setLoading(true);
@@ -62,7 +60,7 @@ export default function Admin({ user }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `AWS_Club_Roster_${new Date().toLocaleDateString()}.csv`;
+    a.download = `AWS_Student_Builder_Group_Roster_${new Date().toLocaleDateString()}.csv`;
     a.click();
   };
 
@@ -76,8 +74,7 @@ export default function Admin({ user }) {
         const canvas = document.createElement('canvas');
         const MAX_SIZE = 150;
         let width = img.width; let height = img.height;
-        if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } } 
-        else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
+        if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } } else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
         canvas.width = width; canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
@@ -113,18 +110,14 @@ export default function Admin({ user }) {
     setProcessing(false);
   }
 
-  // --- NEW: DELETE GHOST USER LOGIC ---
   async function handleDeleteUser(userId, userName) {
-    if(!window.confirm(`WARNING: Are you sure you want to permanently delete the profile for [${userName}]? This will remove them from the Leaderboard and Roster.`)) return;
+    if(!window.confirm(`WARNING: Permanently delete the profile for [${userName}]?`)) return;
     setProcessing(true);
     try {
       const client = generateClient();
       await client.graphql({ query: deleteUser, variables: { input: { id: userId } } });
-      await fetchData(); // Refresh the list
-    } catch (err) { 
-      alert("Error deleting builder profile."); 
-      console.error(err); 
-    }
+      await fetchData(); 
+    } catch (err) { alert("Error deleting builder profile."); console.error(err); }
     setProcessing(false);
   }
 
@@ -157,20 +150,13 @@ export default function Admin({ user }) {
   function openQR(event) { setQrEvent(event); setTimeLeft(15); }
   function closeQR() { clearInterval(rotateRef.current); clearInterval(countRef.current); setQrEvent(null); setQrDataUrl(''); }
 
-  const handleFilterChange = (e, column) => {
-    setFilters(prev => ({ ...prev, [column]: e.target.value }));
-  };
-
+  const handleFilterChange = (e, column) => { setFilters(prev => ({ ...prev, [column]: e.target.value })); };
   const requestSort = (key) => {
     let direction = 'ascending';
     if (sortConfig.key === key && sortConfig.direction === 'ascending') direction = 'descending';
     setSortConfig({ key, direction });
   };
-
-  const getSortIndicator = (key) => {
-    if (sortConfig.key === key) return sortConfig.direction === 'ascending' ? ' ↑' : ' ↓';
-    return ' ↕'; 
-  };
+  const getSortIndicator = (key) => { if (sortConfig.key === key) return sortConfig.direction === 'ascending' ? ' ↑' : ' ↓'; return ' ↕'; };
 
   const uniqueIntakes = [...new Set(users.map(u => u.intake))].filter(Boolean);
   const uniqueMajors = [...new Set(users.flatMap(u => u.major || []))].filter(Boolean);
@@ -179,7 +165,6 @@ export default function Admin({ user }) {
     const userAtts = attendances.filter(a => a.userID === u.id).length;
     const attString = `${userAtts}/${events.length}`;
     const joinedString = new Date(u.createdAt).toLocaleDateString();
-
     const matchMajor = filters.major ? (u.major || []).includes(filters.major) : true;
     const matchIntake = filters.intake ? u.intake === filters.intake : true;
 
@@ -187,52 +172,44 @@ export default function Admin({ user }) {
       (u.member_id || '').toLowerCase().includes(filters.member_id.toLowerCase()) &&
       (u.full_name || '').toLowerCase().includes(filters.full_name.toLowerCase()) &&
       (u.email || '').toLowerCase().includes(filters.email.toLowerCase()) &&
-      matchMajor &&
-      matchIntake &&
-      attString.includes(filters.attendance) &&
-      joinedString.includes(filters.joined)
+      matchMajor && matchIntake && attString.includes(filters.attendance) && joinedString.includes(filters.joined)
     );
   });
 
   const processedRoster = [...filteredUsers].sort((a, b) => {
     if (!sortConfig.key) return 0;
-    let aVal = a[sortConfig.key];
-    let bVal = b[sortConfig.key];
+    let aVal = a[sortConfig.key]; let bVal = b[sortConfig.key];
 
-    if (sortConfig.key === 'attendance') {
-      aVal = attendances.filter(att => att.userID === a.id).length;
-      bVal = attendances.filter(att => att.userID === b.id).length;
-    } else if (sortConfig.key === 'major') {
-      aVal = a.major?.join(', ') || '';
-      bVal = b.major?.join(', ') || '';
-    } else if (sortConfig.key === 'joined') {
-      aVal = new Date(a.createdAt).getTime();
-      bVal = new Date(b.createdAt).getTime();
-    } else {
-      aVal = aVal || '';
-      bVal = bVal || '';
-    }
+    if (sortConfig.key === 'attendance') { aVal = attendances.filter(att => att.userID === a.id).length; bVal = attendances.filter(att => att.userID === b.id).length; } 
+    else if (sortConfig.key === 'major') { aVal = a.major?.join(', ') || ''; bVal = b.major?.join(', ') || ''; } 
+    else if (sortConfig.key === 'joined') { aVal = new Date(a.createdAt).getTime(); bVal = new Date(b.createdAt).getTime(); } 
+    else { aVal = aVal || ''; bVal = bVal || ''; }
 
     if (aVal < bVal) return sortConfig.direction === 'ascending' ? -1 : 1;
     if (aVal > bVal) return sortConfig.direction === 'ascending' ? 1 : -1;
     return 0;
   });
 
-  if (!isCaptain) return <div style={containerStyle}><div style={cardStyle}><div style={headerStyle}><h2 style={{ margin: 0, fontWeight: '900' }}>[ ACCESS_DENIED ]</h2></div></div></div>;
+  if (!isGroupLeader) return <div style={containerStyle}><div style={cardStyle}><div style={{backgroundColor: '#1a1c21', color: 'white', padding: '25px', borderBottom: '4px solid white'}}><h2 style={{ margin: 0, fontWeight: '900' }}>[ ACCESS_DENIED ]</h2></div></div></div>;
   const sortedLeaderboard = [...users].sort((a, b) => (b.xp || 0) - (a.xp || 0));
 
   return (
     <div style={containerStyle}>
       <div style={cardStyle}>
         
-        <div style={headerStyle}>
+        <div style={{ backgroundColor: '#1a1c21', color: 'white', padding: '25px', borderBottom: '4px solid white', textAlign: 'left' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '900', letterSpacing: '2px' }}>[ SYSTEM_ADMIN ]</h2>
-            <button onClick={() => navigate('/')} style={miniBtnStyle}>
-                <img src="/icons/camera.png" style={{ width: '10px', transform: 'rotate(180deg)', marginRight: '4px' }} alt="back" />
-                DASHBOARD
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              {/* REMOVED FILTER */}
+              <img src="/icons/program-icon-magenta.svg" style={{ height: '30px' }} alt="Logo" />
+              <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '900', letterSpacing: '2px' }}>[ SYSTEM_ADMIN_OVERRIDE ]</h2>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <span style={{ background: '#ff57f6', color: 'white', padding: '4px 10px', fontSize: '12px', fontWeight: '900', border: '2px solid white' }}>GROUP_LEADER</span>
+              <button onClick={() => navigate('/')} style={miniBtnStyle}><img src="/icons/camera.png" style={{ width: '10px', transform: 'rotate(180deg)', marginRight: '4px' }} alt="back" />DASHBOARD</button>
+            </div>
           </div>
+          <div style={{ fontSize: '11px', marginTop: '10px', fontWeight: 'bold', color: '#00e87f' }}>TOTAL REGISTERED BUILDERS: {users.length}</div>
         </div>
 
         <div style={{ display: 'flex', borderBottom: '4px solid black' }}>
@@ -246,7 +223,7 @@ export default function Admin({ user }) {
             <>
               {activeTab === 'EVENTS' && (
                 <div>
-                  <div style={{ border: '4px solid black', padding: '20px', backgroundColor: isEditing ? '#fff3e0' : '#f9f9f9', marginBottom: '30px', boxShadow: '6px 6px 0px black' }}>
+                  <div style={{ border: '4px solid black', padding: '20px', backgroundColor: isEditing ? '#f8f9fa' : '#f9f9f9', marginBottom: '30px', boxShadow: '6px 6px 0px #3ea1f3' }}>
                     <h3 style={{ margin: '0 0 15px 0', fontWeight: '900', textTransform: 'uppercase' }}>{isEditing ? 'EDIT_EVENT' : 'DEPLOY_EVENT'}</h3>
                     <form onSubmit={handleSaveEvent} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                       <input placeholder="EVENT_NAME" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required style={inputStyle} />
@@ -266,7 +243,7 @@ export default function Admin({ user }) {
                           <div style={{ width: '50px', height: '50px', border: '2px solid black', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#eee' }}>
                             {form.emoji ? <img src={form.emoji} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="Stamp" /> : <span style={{fontSize: '10px', fontWeight: 'bold'}}>NONE</span>}
                           </div>
-                          <label style={{ cursor: 'pointer', border: '2px solid black', backgroundColor: '#FF9900', padding: '8px 15px', fontWeight: '900', fontSize: '11px', boxShadow: '3px 3px 0px black', color: 'black' }}>
+                          <label style={{ cursor: 'pointer', border: '2px solid black', backgroundColor: '#00e87f', padding: '8px 15px', fontWeight: '900', fontSize: '11px', boxShadow: '3px 3px 0px black', color: 'black' }}>
                             UPLOAD_STAMP_IMAGE
                             <input type="file" accept="image/*" onChange={handleStampUpload} style={{ display: 'none' }} />
                           </label>
@@ -282,13 +259,13 @@ export default function Admin({ user }) {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                     {events.map(event => (
                       <div key={event.id} style={{ display: 'flex', alignItems: 'center', background: 'white', padding: '15px', border: '3px solid black', boxShadow: '4px 4px 0px rgba(0,0,0,0.1)', flexWrap: 'wrap' }}>
-                        <img src={event.emoji || "/icons/event-default.png"} style={{ width: '40px', height: '40px', objectFit: 'contain', marginRight: '15px' }} alt="Event" />
+                        <img src={event.emoji || "/icons/speaker.svg"} style={{ width: '40px', height: '40px', objectFit: 'contain', marginRight: '15px' }} alt="Event" />
                         <div style={{ flex: 1, minWidth: '200px' }}>
                           <div style={{ fontWeight: '900', fontSize: '18px', textTransform: 'uppercase' }}>{event.name}</div>
                           <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#666' }}>{event.track} • {event.xp_reward} XP</div>
                         </div>
                         <div style={{ display: 'flex', gap: '5px', marginTop: '10px' }}>
-                          <button onClick={() => openQR(event)} style={{ border: '3px solid black', background: '#FF9900', color: 'black', padding: '8px 12px', fontWeight: '900', cursor: 'pointer' }}>QR</button>
+                          <button onClick={() => openQR(event)} style={{ border: '3px solid black', background: '#3ea1f3', color: 'white', padding: '8px 12px', fontWeight: '900', cursor: 'pointer' }}>QR</button>
                           <button onClick={() => startEdit(event)} style={{ border: '3px solid black', background: 'white', color: 'black', padding: '8px 12px', fontWeight: '900', cursor: 'pointer' }}>EDIT</button>
                           <button onClick={() => handleDeleteEvent(event.id)} style={{ border: '3px solid black', background: '#ef4444', color: 'white', padding: '8px 12px', fontWeight: '900', cursor: 'pointer' }}>DEL</button>
                         </div>
@@ -301,14 +278,14 @@ export default function Admin({ user }) {
               {activeTab === 'ROSTER' && (
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '15px' }}>
-                    <button onClick={downloadCSV} style={{ ...protoBtn, backgroundColor: '#0A66C2', color: 'white' }}>
-                      <img src="/icons/upload.png" style={{ width: '12px', transform: 'rotate(180deg)', marginRight: '8px', filter: 'invert(1)' }} alt="Download" />
+                    <button onClick={downloadCSV} style={{ ...protoBtn, backgroundColor: '#ff9900', color: 'black' }}>
+                      <img src="/icons/upload.png" style={{ width: '12px', transform: 'rotate(180deg)', marginRight: '8px' }} alt="Download" />
                       EXPORT_CSV
                     </button>
                   </div>
                   <table style={tableStyle}>
                     <thead>
-                      <tr style={{ backgroundColor: '#FF9900', color: 'black' }}>
+                      <tr style={{ backgroundColor: '#3ea1f3', color: 'white' }}>
                         <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('member_id')}>STUDENT_ID{getSortIndicator('member_id')}</th>
                         <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('full_name')}>FULL_NAME{getSortIndicator('full_name')}</th>
                         <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('email')}>EMAIL{getSortIndicator('email')}</th>
@@ -316,26 +293,14 @@ export default function Admin({ user }) {
                         <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('intake')}>INTAKE{getSortIndicator('intake')}</th>
                         <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('attendance')}>ATTENDANCE{getSortIndicator('attendance')}</th>
                         <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('joined')}>JOINED{getSortIndicator('joined')}</th>
-                        
-                        {/* NEW ACTION COLUMN HEADER */}
                         <th style={thStyle}>ACTION</th>
                       </tr>
                       <tr style={{ backgroundColor: '#fffbe6' }}>
                         <th style={{ padding: '5px', border: '3px solid black' }}><input placeholder="Filter..." value={filters.member_id} onChange={e => handleFilterChange(e, 'member_id')} style={filterInputStyle} /></th>
                         <th style={{ padding: '5px', border: '3px solid black' }}><input placeholder="Filter..." value={filters.full_name} onChange={e => handleFilterChange(e, 'full_name')} style={filterInputStyle} /></th>
                         <th style={{ padding: '5px', border: '3px solid black' }}><input placeholder="Filter..." value={filters.email} onChange={e => handleFilterChange(e, 'email')} style={filterInputStyle} /></th>
-                        <th style={{ padding: '5px', border: '3px solid black' }}>
-                          <select value={filters.major} onChange={e => handleFilterChange(e, 'major')} style={filterInputStyle}>
-                            <option value="">All</option>
-                            {uniqueMajors.map(m => <option key={m} value={m}>{m}</option>)}
-                          </select>
-                        </th>
-                        <th style={{ padding: '5px', border: '3px solid black' }}>
-                          <select value={filters.intake} onChange={e => handleFilterChange(e, 'intake')} style={filterInputStyle}>
-                            <option value="">All</option>
-                            {uniqueIntakes.map(i => <option key={i} value={i}>{i}</option>)}
-                          </select>
-                        </th>
+                        <th style={{ padding: '5px', border: '3px solid black' }}><select value={filters.major} onChange={e => handleFilterChange(e, 'major')} style={filterInputStyle}><option value="">All</option>{uniqueMajors.map(m => <option key={m} value={m}>{m}</option>)}</select></th>
+                        <th style={{ padding: '5px', border: '3px solid black' }}><select value={filters.intake} onChange={e => handleFilterChange(e, 'intake')} style={filterInputStyle}><option value="">All</option>{uniqueIntakes.map(i => <option key={i} value={i}>{i}</option>)}</select></th>
                         <th style={{ padding: '5px', border: '3px solid black' }}><input placeholder="Filter..." value={filters.attendance} onChange={e => handleFilterChange(e, 'attendance')} style={filterInputStyle} /></th>
                         <th style={{ padding: '5px', border: '3px solid black' }}><input placeholder="Filter..." value={filters.joined} onChange={e => handleFilterChange(e, 'joined')} style={filterInputStyle} /></th>
                         <th style={{ padding: '5px', border: '3px solid black', backgroundColor: '#eee' }}></th>
@@ -346,24 +311,9 @@ export default function Admin({ user }) {
                         const userAtts = attendances.filter(a => a.userID === u.id).length;
                         return (
                           <tr key={u.id} style={{ backgroundColor: i % 2 === 0 ? 'white' : '#f9f9f9' }}>
-                            <td style={tdStyle}>{u.member_id}</td>
-                            <td style={tdStyle}><strong>{u.full_name}</strong></td>
-                            <td style={tdStyle}>{u.email}</td>
-                            <td style={tdStyle}>{u.major?.join(', ')}</td>
-                            <td style={tdStyle}>{u.intake}</td>
-                            <td style={{ ...tdStyle, fontWeight: '900', textAlign: 'center' }}>{userAtts} / {events.length}</td>
-                            <td style={tdStyle}>{new Date(u.createdAt).toLocaleDateString()}</td>
-                            
-                            {/* NEW DELETE BUTTON */}
-                            <td style={{ ...tdStyle, textAlign: 'center' }}>
-                              <button 
-                                onClick={() => handleDeleteUser(u.id, u.full_name)}
-                                disabled={processing}
-                                style={{ backgroundColor: '#ef4444', color: 'white', border: '2px solid black', padding: '4px 8px', fontWeight: '900', cursor: 'pointer', fontSize: '10px' }}
-                              >
-                                DEL
-                              </button>
-                            </td>
+                            <td style={tdStyle}>{u.member_id}</td><td style={tdStyle}><strong>{u.full_name}</strong></td><td style={tdStyle}>{u.email}</td><td style={tdStyle}>{u.major?.join(', ')}</td><td style={tdStyle}>{u.intake}</td>
+                            <td style={{ ...tdStyle, fontWeight: '900', textAlign: 'center' }}>{userAtts} / {events.length}</td><td style={tdStyle}>{new Date(u.createdAt).toLocaleDateString()}</td>
+                            <td style={{ ...tdStyle, textAlign: 'center' }}><button onClick={() => handleDeleteUser(u.id, u.full_name)} disabled={processing} style={{ backgroundColor: '#ef4444', color: 'white', border: '2px solid black', padding: '4px 8px', fontWeight: '900', cursor: 'pointer', fontSize: '10px' }}>DEL</button></td>
                           </tr>
                         );
                       })}
@@ -374,7 +324,7 @@ export default function Admin({ user }) {
 
               {activeTab === 'LEADERBOARD' && (
                 <table style={tableStyle}>
-                  <thead><tr style={{ backgroundColor: '#6B38FB', color: 'white' }}><th style={thStyle}>RANK</th><th style={thStyle}>BUILDER</th><th style={thStyle}>ACADEMIC YR</th><th style={thStyle}>TIER & LVL</th><th style={thStyle}>ATTENDANCE</th><th style={thStyle}>XP</th></tr></thead>
+                  <thead><tr style={{ backgroundColor: '#9b68f6', color: 'white' }}><th style={thStyle}>RANK</th><th style={thStyle}>BUILDER</th><th style={thStyle}>ACADEMIC YR</th><th style={thStyle}>TIER & LVL</th><th style={thStyle}>ATTENDANCE</th><th style={thStyle}>XP</th></tr></thead>
                   <tbody>
                     {sortedLeaderboard.map((u, i) => {
                       const userAtts = attendances.filter(a => a.userID === u.id).length;
@@ -382,13 +332,13 @@ export default function Admin({ user }) {
                       return (
                         <tr key={u.id}>
                           <td style={{ ...tdStyle, fontWeight: '900', textAlign: 'center' }}>
-                            {i === 0 ? <img src="/icons/crown.png" alt="Rank 1" style={{ width: '20px', verticalAlign: 'middle' }} /> : `#${i + 1}`}
+                            {i === 0 ? <img src="/icons/first.png" alt="1st" style={{ width: '20px', verticalAlign: 'middle' }} /> :
+                             i === 1 ? <img src="/icons/second.png" alt="2nd" style={{ width: '20px', verticalAlign: 'middle' }} /> :
+                             i === 2 ? <img src="/icons/third.png" alt="3rd" style={{ width: '20px', verticalAlign: 'middle' }} /> : 
+                             `#${i + 1}`}
                           </td>
-                          <td style={tdStyle}><strong>{u.full_name}</strong></td>
-                          <td style={tdStyle}>YR {u.year}</td>
-                          <td style={tdStyle}>{u.tier?.toUpperCase()} • LVL {level}</td>
-                          <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 'bold' }}>{userAtts} Events</td>
-                          <td style={{ ...tdStyle, fontWeight: '900', color: '#6B38FB' }}>{u.xp || 0} PT</td>
+                          <td style={tdStyle}><strong>{u.full_name}</strong></td><td style={tdStyle}>YR {u.year}</td><td style={tdStyle}>{u.tier?.toUpperCase()} • LVL {level}</td>
+                          <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 'bold' }}>{userAtts} Events</td><td style={{ ...tdStyle, fontWeight: '900', color: '#9b68f6' }}>{u.xp || 0} PT</td>
                         </tr>
                       );
                     })}
@@ -402,7 +352,7 @@ export default function Admin({ user }) {
       
       {qrEvent && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0, 0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }} onClick={closeQR}>
-          <div style={{ background: 'white', padding: '30px', border: '6px solid black', boxShadow: '15px 15px 0px #FF9900', textAlign: 'center', width: '90%', maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: 'white', padding: '30px', border: '6px solid black', boxShadow: '15px 15px 0px #00e87f', textAlign: 'center', width: '90%', maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
             <div style={{ fontSize: '24px', fontWeight: '900', color: 'black', textTransform: 'uppercase', marginBottom: '20px' }}>{qrEvent.name}</div>
             {qrDataUrl ? <img src={qrDataUrl} alt="QR code" style={{ width: '100%', maxWidth: '280px', margin: '0 auto', display: 'block', border: '4px solid black', padding: '10px' }} /> : <div>GENERATING...</div>}
             <button onClick={closeQR} style={{ ...protoBtn, width: '100%', marginTop: '25px', backgroundColor: 'black', color: 'white' }}>CLOSE</button>
@@ -413,10 +363,17 @@ export default function Admin({ user }) {
   );
 }
 
-// STYLES
-const containerStyle = { minHeight: '100vh', padding: '40px 20px', color: 'black', backgroundColor: '#f4f4f4', backgroundImage: 'radial-gradient(#d1d1d1 1px, transparent 1px)', backgroundSize: '20px 20px', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' };
-const cardStyle = { width: '100%', maxWidth: '1000px', backgroundColor: 'white', border: '4px solid black', boxShadow: '12px 12px 0px black', overflow: 'hidden' };
-const headerStyle = { backgroundColor: 'black', color: 'white', padding: '25px', borderBottom: '4px solid black', textAlign: 'left' };
+// AWS BRAND STYLES
+const containerStyle = { 
+  minHeight: '100vh', padding: '40px 20px', color: 'black', backgroundColor: '#1a1c21', 
+  backgroundImage: `
+    linear-gradient(#2d3139 2px, transparent 2px), 
+    linear-gradient(90deg, #2d3139 2px, transparent 2px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280'%3E%3Crect x='0' y='0' width='80' height='80' fill='%23ff9900' opacity='0.8'/%3E%3Crect x='200' y='0' width='80' height='80' fill='%23ff9900' opacity='0.8'/%3E%3Crect x='120' y='0' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='80' y='40' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='160' y='40' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='40' y='80' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='200' y='80' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='120' y='80' width='40' height='40' fill='%23ff57f6' opacity='0.8'/%3E%3Crect x='80' y='120' width='40' height='40' fill='%23ff57f6' opacity='0.8'/%3E%3Crect x='160' y='120' width='40' height='40' fill='%23ff57f6' opacity='0.8'/%3E%3Crect x='0' y='160' width='80' height='80' fill='%23ff9900' opacity='0.8'/%3E%3Crect x='200' y='160' width='80' height='80' fill='%23ff9900' opacity='0.8'/%3E%3Crect x='120' y='200' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3C/svg%3E")
+  `, 
+  backgroundSize: '40px 40px, 40px 40px, 500px 500px', backgroundPosition: '0 0, 0 0, right 50px', backgroundRepeat: 'repeat, repeat, no-repeat', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' 
+};
+const cardStyle = { width: '100%', maxWidth: '1000px', backgroundColor: 'white', border: '4px solid white', boxShadow: '12px 12px 0px black', overflow: 'hidden' };
 const tableStyle = { width: '100%', borderCollapse: 'collapse', border: '4px solid black' };
 const thStyle = { padding: '12px', border: '3px solid black', textAlign: 'left', fontWeight: '900', fontSize: '12px', letterSpacing: '1px' };
 const tdStyle = { padding: '12px', border: '2px solid black', fontSize: '13px', color: 'black' };

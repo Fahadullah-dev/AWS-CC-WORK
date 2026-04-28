@@ -4,17 +4,17 @@ import { getCurrentUser, deleteUser as deleteCognitoUser, signOut } from 'aws-am
 import { getUser, listAttendances } from '../graphql/queries';
 import { createUser, updateUser, deleteUser as deleteDBUser } from '../graphql/mutations';
 
-const AVAILABLE_MAJORS = ['AI', 'Computer Science', 'Cybersecurity', 'Business Information Systems', 'Game Dev'];
+const AVAILABLE_MAJORS = ['AI', 'CS', 'Cyber', 'BIS', 'Game Dev'];
 const AVATAR_PRESETS = [
   "/avatars/pfp1.jpg", "/avatars/pfp2.jpg", "/avatars/pfp3.jpg", "/avatars/pfp4.jpg", "/avatars/pfp5.jpg",
   "/avatars/pfp6.jpg", "/avatars/pfp7.jpg", "/avatars/pfp8.jpg", "/avatars/pfp9.jpg", "/avatars/pfp10.jpg"
 ];
 
 const TIER_ICONS = {
-  EXPLORER: '/icons/explorer.png',
-  BUILDER: '/icons/builder.png',
-  ARCHITECT: '/icons/architect.png',
-  PIONEER: '/icons/pioneer.png'
+  EXPLORER: '/icons/explorer.svg',
+  BUILDER: '/icons/builder.svg',
+  ARCHITECT: '/icons/architect.svg',
+  PIONEER: '/icons/pioneer.svg'
 };
 
 export default function Passport() {
@@ -109,7 +109,7 @@ export default function Passport() {
           <div>
             <label style={editLabel}>MAJORS_ARRAY (MAX 2)</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-              {AVAILABLE_MAJORS.map(m => (<div key={m} onClick={() => toggleMajor(m)} style={{ ...pillStyle, backgroundColor: form.major.includes(m) ? '#FF9900' : '#eee' }}>{m}</div>))}
+              {AVAILABLE_MAJORS.map(m => (<div key={m} onClick={() => toggleMajor(m)} style={{ ...pillStyle, backgroundColor: form.major.includes(m) ? '#ff9900' : '#eee' }}>{m}</div>))}
             </div>
           </div>
           <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
@@ -121,7 +121,7 @@ export default function Passport() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', marginBottom: '15px' }}>
               {AVATAR_PRESETS.map(url => ( 
                 <img key={url} src={url} onClick={() => setForm({...form, avatar_url: url})} 
-                style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', border: form.avatar_url === url ? '4px solid #FF9900' : '2px solid black', cursor: 'pointer', backgroundColor: 'white' }} /> 
+                style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', border: form.avatar_url === url ? '4px solid #3ea1f3' : '2px solid black', cursor: 'pointer', backgroundColor: 'white' }} /> 
               ))}
             </div>
             <div style={{ textAlign: 'center' }}>
@@ -133,7 +133,7 @@ export default function Passport() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '15px' }}>
-            <button type="submit" style={{ ...protoBtn, backgroundColor: '#FF9900', flex: 2 }}>SAVE_IDENTITY</button>
+            <button type="submit" style={{ ...protoBtn, backgroundColor: '#3ea1f3', color: 'white', flex: 2 }}>SAVE_IDENTITY</button>
             <button type="button" onClick={() => setIsEditing(false)} style={{ ...protoBtn, backgroundColor: 'white', flex: 1 }}>CANCEL</button>
           </div>
         </form>
@@ -141,7 +141,6 @@ export default function Passport() {
     );
   }
 
-  // --- DYNAMIC LEVEL & TIER CALCULATOR ---
   const currentTotalXp = profile?.xp || 0;
   const currentLevel = Math.floor(currentTotalXp / 1000) + 1;
   const xpTowardsNextLevel = currentTotalXp % 1000;
@@ -154,19 +153,21 @@ export default function Passport() {
   return (
     <div style={{ backgroundColor: '#fafafa', position: 'relative', color: 'black', border: '10px solid white' }}>
       
-      {/* OFFICIAL WATERMARK HEADER */}
-      <div style={{ backgroundColor: 'black', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', borderBottom: '4px solid #FF9900' }}>
-        <h2 style={{ color: 'white', margin: 0, fontSize: '18px', fontWeight: '900', letterSpacing: '3px', textTransform: 'uppercase' }}>OFFICIAL_BUILDER_ID</h2>
+      <div style={{ backgroundColor: '#1a1c21', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', borderBottom: '4px solid #ff9900' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+           {/* REMOVED FILTER */}
+           <img src="/icons/program-icon-magenta.svg" style={{ height: '24px' }} alt="Logo" />
+           <h2 style={{ color: 'white', margin: 0, fontSize: '18px', fontWeight: '900', letterSpacing: '2px', textTransform: 'uppercase' }}>OFFICIAL_BUILDER_ID</h2>
+        </div>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button onClick={() => setIsEditing(true)} style={miniBtnStyle}>EDIT</button>
-          <button onClick={handleDeleteAccount} style={{ ...miniBtnStyle, backgroundColor: '#ff4d4d', color: 'white' }}>DEL</button>
+          <button onClick={handleDeleteAccount} style={{ ...miniBtnStyle, backgroundColor: '#ff57f6', color: 'white' }}>DEL</button>
         </div>
       </div>
       
       <div style={{ padding: '25px' }}>
-        {/* PREMIUM ID HEADER WITH BARCODE EDGE */}
         <div style={{ display: 'flex', gap: '20px', marginBottom: '30px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
-          <div style={{ border: '4px solid black', padding: '6px', backgroundColor: 'white', boxShadow: '6px 6px 0px #ccc', position: 'relative', minWidth: '100px' }}>
+          <div style={{ border: '4px solid black', padding: '6px', backgroundColor: 'white', boxShadow: '6px 6px 0px #3ea1f3', position: 'relative', minWidth: '100px' }}>
             <img src={profile?.avatar_url} style={{ width: '120px', height: '120px', display: 'block', backgroundColor: 'white', objectFit: 'cover' }} alt="Avatar" />
             <div style={screwStyle({top: '4px', left: '4px'})}></div><div style={screwStyle({top: '4px', right: '4px'})}></div><div style={screwStyle({bottom: '4px', left: '4px'})}></div><div style={screwStyle({bottom: '4px', right: '4px'})}></div>
           </div>
@@ -174,15 +175,13 @@ export default function Passport() {
           <div style={{ flex: 1, textAlign: 'left', minWidth: '200px' }}>
             <h1 style={{ margin: '0 0 10px 0', fontSize: '32px', fontWeight: '900', color: 'black', textTransform: 'uppercase', lineHeight: '1', letterSpacing: '-1px' }}>{profile?.full_name}</h1>
             
-            {/* BADGE WITH ICON */}
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', backgroundColor: 'black', color: 'white', padding: '6px 14px', fontWeight: '900', fontSize: '14px', border: '2px solid #FF9900' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', backgroundColor: 'black', color: 'white', padding: '6px 14px', fontWeight: '900', fontSize: '14px', border: '2px solid #00e87f' }}>
               <img src={TIER_ICONS[currentTier]} alt={currentTier} style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
-              {currentTier} • LVL {currentLevel}
+              <span style={{ color: '#00e87f' }}>{currentTier}</span> • LVL {currentLevel}
             </div>
           </div>
         </div>
 
-        {/* BRUTALIST STRUCTURED DATA BLOCKS */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '15px', marginBottom: '30px' }}>
           <div style={dataBoxStyle}><label style={dataLabelStyle}>STUDENT_ID</label><div style={dataValStyle}>{profile?.member_id}</div></div>
           <div style={dataBoxStyle}><label style={dataLabelStyle}>MAJORS_SPEC</label><div style={dataValStyle}>{profile?.major?.join(' + ')}</div></div>
@@ -190,26 +189,24 @@ export default function Passport() {
           <div style={dataBoxStyle}><label style={dataLabelStyle}>SYS_JOIN_DATE</label><div style={dataValStyle}>{profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : '04/27/2026'}</div></div>
         </div>
 
-        {/* THICK DYNAMIC XP BAR */}
         <div style={{ border: '4px solid black', padding: '15px', backgroundColor: 'white', boxShadow: '4px 4px 0px #ccc' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontWeight: '900', fontSize: '12px', flexWrap: 'wrap' }}>
-            <span style={{ color: '#6B38FB' }}>&gt; XP_STRENGTH (LVL {currentLevel})</span>
+            <span style={{ color: '#9b68f6' }}>&gt; XP_STRENGTH (LVL {currentLevel})</span>
             <span>{xpTowardsNextLevel} / 1000 PT</span>
           </div>
           <div style={{ width: '100%', height: '24px', border: '3px solid black', backgroundColor: '#eee', overflow: 'hidden' }}>
-            <div style={{ width: `${(xpTowardsNextLevel / 1000) * 100}%`, height: '100%', backgroundColor: '#FF9900', backgroundImage: 'linear-gradient(45deg, rgba(255,255,255,0.2) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.2) 75%, transparent 75%, transparent)', backgroundSize: '15px 15px' }}></div>
+            <div style={{ width: `${(xpTowardsNextLevel / 1000) * 100}%`, height: '100%', backgroundColor: '#ff9900', backgroundImage: 'linear-gradient(45deg, rgba(255,255,255,0.2) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.2) 75%, transparent 75%, transparent)', backgroundSize: '15px 15px' }}></div>
           </div>
         </div>
         
-        {/* CSS GENERATED BARCODE */}
         <div style={{ marginTop: '30px', width: '100%', height: '40px', backgroundImage: 'repeating-linear-gradient(90deg, black, black 2px, transparent 2px, transparent 4px, black 4px, black 5px, transparent 5px, transparent 8px, black 8px, black 12px, transparent 12px, transparent 15px)', opacity: 0.8 }}></div>
         <div style={{ textAlign: 'center', fontSize: '10px', fontWeight: '900', letterSpacing: '10px', marginTop: '5px' }}>{profile?.id?.split('-')[0].toUpperCase()}</div>
+        <div style={{ textAlign: 'center', marginTop: '15px', fontSize: '10px', fontWeight: '900', color: '#888', letterSpacing: '2px' }}>PROPERTY_OF_AWS_STUDENT_BUILDER_GROUP</div>
       </div>
     </div>
   );
 }
 
-// STYLES
 const screwStyle = (pos) => ({ position: 'absolute', ...pos, width: '4px', height: '4px', background: 'black', borderRadius: '50%' });
 const dataBoxStyle = { border: '3px solid black', padding: '15px', backgroundColor: 'white' };
 const dataLabelStyle = { fontSize: '10px', fontWeight: '900', color: '#888', display: 'block', marginBottom: '8px', borderBottom: '2px solid #eee', paddingBottom: '4px' };

@@ -11,15 +11,12 @@ export default function Auth({ onAuthSuccess }) {
   const [view, setView] = useState('login'); 
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState(null); 
-  
-  // NEW: Password Visibility State
   const [showPassword, setShowPassword] = useState(false);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [code, setCode] = useState('');
-  const [fullName, setFullName] = useState('');
   const [major, setMajor] = useState([]);
   const [year, setYear] = useState(3);
   const [intake, setIntake] = useState('Jan 2026');
@@ -37,9 +34,7 @@ export default function Auth({ onAuthSuccess }) {
     e.preventDefault();
     setLoading(true);
     try { 
-      // Amplify v6 returns a NextStep object for unconfirmed users instead of throwing an error
       const { isSignedIn, nextStep } = await signIn({ username: email, password }); 
-      
       if (nextStep?.signInStep === 'CONFIRM_SIGN_UP') {
         setPopup({ type: 'error', message: "Identity not verified. Redirecting to verification terminal..." });
         setView('confirm');
@@ -47,13 +42,10 @@ export default function Auth({ onAuthSuccess }) {
         onAuthSuccess();
       }
     } catch (err) { 
-      // Catch older UserNotConfirmedException just in case
       if (err.name === 'UserNotConfirmedException') {
         setPopup({ type: 'error', message: "Identity not verified. Redirecting to verification terminal..." });
         setView('confirm');
-      } else {
-        setPopup({ type: 'error', message: err.message }); 
-      }
+      } else { setPopup({ type: 'error', message: err.message }); }
     }
     setLoading(false);
   };
@@ -61,13 +53,11 @@ export default function Auth({ onAuthSuccess }) {
   const handleSignUp = async (e) => {
     e.preventDefault();
     if (major.length === 0) { setPopup({ type: 'error', message: "Please select at least 1 major." }); return; }
-    
     const isMurdoch = email.endsWith('@student.murdoch.edu.au') || email.endsWith('@murdoch.edu.au');
     if (!isMurdoch) {
       setPopup({ type: 'error', message: "You must use a valid Murdoch University email domain to register." });
       return;
     }
-
     setLoading(true);
     try {
       await signUp({ username: email, password, options: { userAttributes: { email } } });
@@ -117,12 +107,10 @@ export default function Auth({ onAuthSuccess }) {
 
   return (
     <div style={containerStyle}>
-      
-      {/* CUSTOM BRUTALIST POPUP */}
       {popup && (
         <div style={overlayStyle} onClick={() => setPopup(null)}>
           <div style={popupCardStyle} onClick={e => e.stopPropagation()}>
-            <div style={{ ...popupHeaderStyle, backgroundColor: popup.type === 'error' ? '#ef4444' : '#10b981' }}>
+            <div style={{ ...popupHeaderStyle, backgroundColor: popup.type === 'error' ? '#ff57f6' : '#00e87f' }}>
               [ {popup.type === 'error' ? 'SYSTEM_ERROR' : 'SYSTEM_NOTICE'} ]
             </div>
             <div style={popupBodyStyle}>{popup.message}</div>
@@ -137,66 +125,47 @@ export default function Auth({ onAuthSuccess }) {
         )}
         
         <div style={headerStyle}>
+            {/* REMOVED FILTER */}
+            <img src="/icons/brandmark.svg" alt="AWS Student Builder Group" style={{ height: '100px', marginBottom: '20px' }} />
             <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '900', letterSpacing: '1px' }}>
-                {view === 'login' ? 'LOGIN_TERMINAL' : 
-                 view === 'signup' ? 'CREATE_PASSPORT' : 
-                 view === 'confirm' ? 'VERIFY_IDENTITY' : 
-                 view === 'forgot' ? 'RECOVER_ACCESS' : 'SET_NEW_PASSWORD'}
+                {view === 'login' ? 'LOGIN_TERMINAL' : view === 'signup' ? 'CREATE_PASSPORT' : view === 'confirm' ? 'VERIFY_IDENTITY' : view === 'forgot' ? 'RECOVER_ACCESS' : 'SET_NEW_PASSWORD'}
             </h2>
         </div>
 
         <div style={{ padding: '30px' }}>
-            {/* LOGIN VIEW */}
             {view === 'login' && (
             <form onSubmit={handleLogin} style={formStyle}>
-                <div style={inputGroup}>
-                    <label style={labelStyle}>UNIVERSITY_EMAIL</label>
-                    <input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} />
-                </div>
+                <div style={inputGroup}><label style={labelStyle}>UNIVERSITY_EMAIL</label><input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} /></div>
                 <div style={inputGroup}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <label style={labelStyle}>PASSWORD</label>
-                        <span onClick={() => setShowPassword(!showPassword)} style={{ fontSize: '10px', fontWeight: '900', cursor: 'pointer', color: '#6B38FB' }}>
-                            {showPassword ? '[HIDE]' : '[SHOW]'}
-                        </span>
+                        <span onClick={() => setShowPassword(!showPassword)} style={{ fontSize: '10px', fontWeight: '900', cursor: 'pointer', color: '#3ea1f3' }}>{showPassword ? '[HIDE]' : '[SHOW]'}</span>
                     </div>
                     <input type={showPassword ? "text" : "password"} required value={password} onChange={e => setPassword(e.target.value)} style={inputStyle} />
                 </div>
-                <button type="submit" disabled={loading} style={primaryBtnStyle}>
-                    {loading ? 'SYNCING...' : 'ACCESS_PASSPORT'}
-                </button>
+                <button type="submit" disabled={loading} style={primaryBtnStyle}>{loading ? 'SYNCING...' : 'ACCESS_PASSPORT'}</button>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', fontSize: '11px', fontWeight: '900' }}>
-                    <span style={{ color: '#6B38FB', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setView('forgot')}>FORGOT_PASSWORD?</span>
-                    <span style={{ color: '#FF9900', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setView('signup')}>INITIALIZE_NEW_BUILDER</span>
+                    <span style={{ color: '#9b68f6', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setView('forgot')}>FORGOT_PASSWORD?</span>
+                    <span style={{ color: '#ff9900', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setView('signup')}>INITIALIZE_NEW_BUILDER</span>
                 </div>
             </form>
             )}
 
-            {/* FORGOT PASSWORD VIEW */}
             {view === 'forgot' && (
             <form onSubmit={handleForgotPassword} style={formStyle}>
                 <p style={{ fontSize: '12px', fontWeight: 'bold' }}>Enter your email to receive a recovery code.</p>
-                <div style={inputGroup}>
-                    <label style={labelStyle}>UNIVERSITY_EMAIL</label>
-                    <input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} />
-                </div>
+                <div style={inputGroup}><label style={labelStyle}>UNIVERSITY_EMAIL</label><input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} /></div>
                 <button type="submit" disabled={loading} style={primaryBtnStyle}>SEND_RECOVERY_CODE</button>
             </form>
             )}
 
-            {/* RESET PASSWORD VIEW */}
             {view === 'reset' && (
             <form onSubmit={handleResetPassword} style={formStyle}>
-                <div style={inputGroup}>
-                    <label style={labelStyle}>RECOVERY_CODE</label>
-                    <input type="text" required value={code} onChange={e => setCode(e.target.value)} style={inputStyle} />
-                </div>
+                <div style={inputGroup}><label style={labelStyle}>RECOVERY_CODE</label><input type="text" required value={code} onChange={e => setCode(e.target.value)} style={inputStyle} /></div>
                 <div style={inputGroup}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <label style={labelStyle}>NEW_PASSWORD</label>
-                        <span onClick={() => setShowPassword(!showPassword)} style={{ fontSize: '10px', fontWeight: '900', cursor: 'pointer', color: '#6B38FB' }}>
-                            {showPassword ? '[HIDE]' : '[SHOW]'}
-                        </span>
+                        <span onClick={() => setShowPassword(!showPassword)} style={{ fontSize: '10px', fontWeight: '900', cursor: 'pointer', color: '#3ea1f3' }}>{showPassword ? '[HIDE]' : '[SHOW]'}</span>
                     </div>
                     <input type={showPassword ? "text" : "password"} required value={newPassword} onChange={e => setNewPassword(e.target.value)} style={inputStyle} />
                 </div>
@@ -204,62 +173,42 @@ export default function Auth({ onAuthSuccess }) {
             </form>
             )}
 
-            {/* SIGNUP VIEW */}
             {view === 'signup' && (
             <form onSubmit={handleSignUp} style={formStyle}>
-                <div style={inputGroup}>
-                  <label style={labelStyle}>MURDOCH_EMAIL (@student.murdoch.edu.au)</label>
-                  <input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} />
-                </div>
+                <div style={inputGroup}><label style={labelStyle}>MURDOCH_EMAIL (@student.murdoch.edu.au)</label><input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} /></div>
                 <div style={inputGroup}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <label style={labelStyle}>SECURE_PASSWORD</label>
-                        <span onClick={() => setShowPassword(!showPassword)} style={{ fontSize: '10px', fontWeight: '900', cursor: 'pointer', color: '#6B38FB' }}>
-                            {showPassword ? '[HIDE]' : '[SHOW]'}
-                        </span>
+                        <span onClick={() => setShowPassword(!showPassword)} style={{ fontSize: '10px', fontWeight: '900', cursor: 'pointer', color: '#3ea1f3' }}>{showPassword ? '[HIDE]' : '[SHOW]'}</span>
                     </div>
                     <input type={showPassword ? "text" : "password"} required value={password} onChange={e => setPassword(e.target.value)} style={inputStyle} />
                 </div>
-                
                 <div>
                   <label style={labelStyle}>MAJORS_ARRAY (MAX 2)</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                      {AVAILABLE_MAJORS.map(m => (
-                      <div key={m} onClick={() => toggleMajor(m)} style={{ ...pillStyle, background: major.includes(m) ? '#FF9900' : '#f0f0f0' }}>{m}</div>
-                      ))}
+                      {AVAILABLE_MAJORS.map(m => (<div key={m} onClick={() => toggleMajor(m)} style={{ ...pillStyle, background: major.includes(m) ? '#ff9900' : '#f0f0f0' }}>{m}</div>))}
                   </div>
                 </div>
-
                 <div style={{ display: 'flex', gap: '10px' }}>
-                    <div style={{ flex: 1 }}><label style={labelStyle}>YEAR_LVL</label>
-                        <select value={year} onChange={e => setYear(e.target.value)} style={inputStyle}><option value={1}>1</option><option value={2}>2</option><option value={3}>3</option><option value={4}>4</option></select>
-                    </div>
+                    <div style={{ flex: 1 }}><label style={labelStyle}>YEAR_LVL</label><select value={year} onChange={e => setYear(e.target.value)} style={inputStyle}><option value={1}>1</option><option value={2}>2</option><option value={3}>3</option><option value={4}>4</option></select></div>
                     <div style={{ flex: 1 }}><label style={labelStyle}>INTAKE</label><input required type="text" placeholder="e.g. Jan 2026" value={intake} onChange={e => setIntake(e.target.value)} style={inputStyle} /></div>
                 </div>
-
                 <div style={{ border: '3px solid black', padding: '15px', backgroundColor: '#f9f9f9' }}>
                     <label style={labelStyle}>SELECT_AVATAR_UNIT</label>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
-                        {AVATAR_PRESETS.map(url => (
-                        <img key={url} src={url} onClick={() => setAvatarUrl(url)} 
-                        style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', border: avatarUrl === url ? '4px solid #FF9900' : '2px solid black', cursor: 'pointer' }} />
-                        ))}
+                        {AVATAR_PRESETS.map(url => (<img key={url} src={url} onClick={() => setAvatarUrl(url)} style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', border: avatarUrl === url ? '4px solid #3ea1f3' : '2px solid black', cursor: 'pointer' }} />))}
                     </div>
                 </div>
-                
                 <button type="submit" disabled={loading} style={primaryBtnStyle}>ISSUE_PASSPORT</button>
             </form>
             )}
 
-            {/* CONFIRM VIEW */}
             {view === 'confirm' && (
             <form onSubmit={handleConfirm} style={formStyle}>
                 <label style={{...labelStyle, textAlign: 'center'}}>ENTER_VERIFICATION_CODE SENT TO EMAIL</label>
                 <input type="text" required value={code} onChange={e => setCode(e.target.value)} style={{ ...inputStyle, textAlign: 'center', fontSize: '28px', letterSpacing: '5px' }} />
                 <button type="submit" disabled={loading} style={primaryBtnStyle}>CONFIRM_IDENTITY</button>
-                <div style={{ textAlign: 'center', marginTop: '10px' }}>
-                  <span onClick={handleResendCode} style={{ fontSize: '11px', fontWeight: '900', color: '#6B38FB', cursor: 'pointer', textDecoration: 'underline' }}>DIDN'T RECEIVE IT? RESEND CODE</span>
-                </div>
+                <div style={{ textAlign: 'center', marginTop: '10px' }}><span onClick={handleResendCode} style={{ fontSize: '11px', fontWeight: '900', color: '#9b68f6', cursor: 'pointer', textDecoration: 'underline' }}>DIDN'T RECEIVE IT? RESEND CODE</span></div>
             </form>
             )}
         </div>
@@ -268,21 +217,27 @@ export default function Auth({ onAuthSuccess }) {
   );
 }
 
-// --- STANDARD STYLES ---
-const containerStyle = { minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px', backgroundColor: '#f4f4f4', backgroundImage: 'radial-gradient(#d1d1d1 1px, transparent 1px)', backgroundSize: '20px 20px' };
-const cardStyle = { width: '100%', maxWidth: '480px', backgroundColor: 'white', border: '4px solid black', boxShadow: '12px 12px 0px black', position: 'relative', color: 'black' };
-const headerStyle = { backgroundColor: '#6B38FB', color: 'white', padding: '20px', borderBottom: '4px solid black', textAlign: 'center' };
+// AWS STUDENT BUILDER GROUP STYLES
+const containerStyle = { 
+  minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '40px 20px', backgroundColor: '#1a1c21', 
+  backgroundImage: `
+    linear-gradient(#2d3139 2px, transparent 2px), 
+    linear-gradient(90deg, #2d3139 2px, transparent 2px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280'%3E%3Crect x='0' y='0' width='80' height='80' fill='%23ff9900' opacity='0.8'/%3E%3Crect x='200' y='0' width='80' height='80' fill='%23ff9900' opacity='0.8'/%3E%3Crect x='120' y='0' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='80' y='40' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='160' y='40' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='40' y='80' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='200' y='80' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='120' y='80' width='40' height='40' fill='%23ff57f6' opacity='0.8'/%3E%3Crect x='80' y='120' width='40' height='40' fill='%23ff57f6' opacity='0.8'/%3E%3Crect x='160' y='120' width='40' height='40' fill='%23ff57f6' opacity='0.8'/%3E%3Crect x='0' y='160' width='80' height='80' fill='%23ff9900' opacity='0.8'/%3E%3Crect x='200' y='160' width='80' height='80' fill='%23ff9900' opacity='0.8'/%3E%3Crect x='120' y='200' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3C/svg%3E")
+  `, 
+  backgroundSize: '40px 40px, 40px 40px, 500px 500px', backgroundPosition: '0 0, 0 0, right 50px', backgroundRepeat: 'repeat, repeat, no-repeat', color: 'black' 
+};
+const cardStyle = { width: '100%', maxWidth: '480px', backgroundColor: 'white', border: '4px solid white', boxShadow: '12px 12px 0px black', position: 'relative', color: 'black' };
+const headerStyle = { backgroundColor: '#1a1c21', color: 'white', padding: '30px 20px', borderBottom: '4px solid white', textAlign: 'center' };
 const backBtnStyle = { position: 'absolute', top: '22px', left: '15px', background: 'white', border: '2px solid black', color: 'black', fontWeight: '900', fontSize: '10px', padding: '5px 10px', cursor: 'pointer', zIndex: 10 };
 const formStyle = { display: 'flex', flexDirection: 'column', gap: '20px' };
 const inputGroup = { display: 'flex', flexDirection: 'column', gap: '5px' };
 const labelStyle = { fontSize: '10px', fontWeight: '900', color: 'black', letterSpacing: '0.5px' };
 const inputStyle = { width: '100%', padding: '12px', border: '2px solid black', fontWeight: 'bold', outline: 'none', color: 'black', backgroundColor: 'white' };
 const pillStyle = { padding: '6px 12px', border: '2px solid black', fontSize: '11px', fontWeight: '900', cursor: 'pointer', color: 'black' };
-const primaryBtnStyle = { padding: '15px', border: '4px solid black', backgroundColor: '#FF9900', color: 'black', fontWeight: '900', fontSize: '14px', cursor: 'pointer', boxShadow: '5px 5px 0px black' };
-
-// --- NEW POPUP STYLES ---
+const primaryBtnStyle = { padding: '15px', border: '4px solid black', backgroundColor: '#3ea1f3', color: 'white', fontWeight: '900', fontSize: '14px', cursor: 'pointer', boxShadow: '5px 5px 0px black' };
 const overlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' };
-const popupCardStyle = { backgroundColor: 'white', border: '4px solid black', boxShadow: '12px 12px 0px #FF9900', width: '100%', maxWidth: '400px', textAlign: 'center', overflow: 'hidden' };
+const popupCardStyle = { backgroundColor: 'white', border: '4px solid black', boxShadow: '12px 12px 0px #ff9900', width: '100%', maxWidth: '400px', textAlign: 'center', overflow: 'hidden' };
 const popupHeaderStyle = { color: 'white', padding: '15px', borderBottom: '4px solid black', fontWeight: '900', fontSize: '16px', letterSpacing: '2px' };
 const popupBodyStyle = { padding: '30px 20px', fontWeight: 'bold', fontSize: '14px', color: 'black', lineHeight: '1.5' };
 const popupBtnStyle = { width: '100%', padding: '15px', backgroundColor: 'black', color: 'white', fontWeight: '900', border: 'none', borderTop: '4px solid black', cursor: 'pointer', fontSize: '14px', letterSpacing: '1px' };
