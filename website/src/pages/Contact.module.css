@@ -1,0 +1,334 @@
+.page {
+  background: var(--color-bg);
+  padding-bottom: 3rem;
+}
+
+.hero {
+  padding-block: 3.25rem 1.25rem;
+  text-align: center;
+  position: relative;
+}
+
+.heading {
+  font-family: var(--font-mono);
+  font-size: clamp(2.2rem, 6.2vw, 3.2rem);
+  letter-spacing: -0.03em;
+  color: var(--color-ink);
+}
+
+.sub {
+  max-width: 720px;
+  margin: 0.85rem auto 0;
+  color: var(--color-ink-soft);
+  line-height: 1.9;
+}
+
+.layout {
+  margin-top: 1.4rem;
+  display: grid;
+  grid-template-columns: 0.95fr 1.05fr;
+  gap: 1.2rem;
+  align-items: start;
+}
+
+.left {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.right {
+  display: flex;
+}
+
+.panel,
+.formCard {
+  border-radius: 14px;
+  border: 1px solid rgba(11, 16, 32, 0.14);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 18px 55px rgba(11, 16, 32, 0.07);
+  overflow: hidden;
+}
+
+.panel {
+  padding: 1.05rem 1.05rem 1rem;
+  background: var(--color-bg-card);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+
+.panelIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(123, 47, 190, 0.12);
+  border: 1px solid rgba(123, 47, 190, 0.22);
+}
+
+.panelTitle {
+  font-family: var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 900;
+  font-size: 0.8rem;
+  color: rgba(11, 16, 32, 0.78);
+}
+
+.panelBody {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.metaRow {
+  display: grid;
+  grid-template-columns: 82px 1fr;
+  gap: 0.7rem;
+  align-items: start;
+}
+
+.metaLabel {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(11, 16, 32, 0.66);
+  padding-top: 0.1rem;
+}
+
+.metaValue {
+  color: rgba(11, 16, 32, 0.82);
+  line-height: 1.6;
+}
+
+.mailLink {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.metaSep {
+  height: 1px;
+  background: rgba(11, 16, 32, 0.12);
+  margin: 0.35rem 0 0.25rem;
+}
+
+.nodeList {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.nodeLink {
+  font-family: var(--font-mono);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  color: rgba(11, 16, 32, 0.75);
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(11, 16, 32, 0.12);
+  background: rgba(11, 16, 32, 0.02);
+  transition: transform var(--t-fast) var(--ease-out), box-shadow var(--t-fast) var(--ease-out);
+}
+
+.nodeLink:hover {
+  border-color: rgba(123, 47, 190, 0.28);
+  box-shadow: 0 16px 44px rgba(123, 47, 190, 0.10);
+}
+
+.note {
+  margin-top: 1rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 107, 53, 0.22);
+  background: rgba(255, 107, 53, 0.10);
+  color: rgba(11, 16, 32, 0.86);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.noteSub {
+  margin-top: 0.55rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  color: rgba(11, 16, 32, 0.68);
+}
+
+.formCard {
+  width: 100%;
+  background: var(--color-bg-card);
+}
+
+.formTop {
+  padding: 1.1rem 1.15rem;
+  background: linear-gradient(180deg, rgba(123, 47, 190, 0.22), rgba(11, 16, 32, 0.04));
+  border-bottom: 1px solid rgba(11, 16, 32, 0.10);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.formTitleIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: rgba(255, 107, 53, 0.12);
+  border: 1px solid rgba(255, 107, 53, 0.22);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.formTitle {
+  font-family: var(--font-mono);
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  color: rgba(11, 16, 32, 0.86);
+}
+
+.form {
+  padding: 1.1rem 1.15rem 1.2rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.fieldLabel {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(11, 16, 32, 0.72);
+}
+
+.input,
+.textarea {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(11, 16, 32, 0.14);
+  background: rgba(11, 16, 32, 0.03);
+  padding: 0.8rem 0.9rem;
+  font-size: 0.95rem;
+  color: rgba(11, 16, 32, 0.92);
+  outline: none;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 132px;
+}
+
+.sendBtn {
+  justify-self: end;
+  font-family: var(--font-mono);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  padding: 0.95rem 1.25rem;
+  border-radius: 12px;
+  background: var(--color-accent);
+  color: var(--color-white);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 16px 44px rgba(255, 107, 53, 0.22);
+  transition: transform var(--t-fast) var(--ease-out), box-shadow var(--t-fast) var(--ease-out), opacity var(--t-fast);
+}
+
+.sendBtn:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
+}
+
+.secure {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.65rem;
+  padding-top: 0.35rem;
+  color: rgba(11, 16, 32, 0.72);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.secureDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  background: rgba(47, 224, 191, 0.9);
+  box-shadow: 0 0 0 6px rgba(47, 224, 191, 0.15);
+}
+
+.successWrap {
+  padding: 1.1rem 1.15rem 1.2rem;
+  display: grid;
+  gap: 0.85rem;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.successHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.9rem 0.95rem;
+  border-radius: 12px;
+  border: 1px solid rgba(47, 224, 191, 0.28);
+  background: rgba(47, 224, 191, 0.10);
+}
+
+.successIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: rgba(47, 224, 191, 0.18);
+  border: 1px solid rgba(47, 224, 191, 0.25);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.successTitle {
+  font-family: var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 950;
+  font-size: 0.8rem;
+  color: rgba(11, 16, 32, 0.86);
+}
+
+.successText {
+  color: rgba(11, 16, 32, 0.78);
+  line-height: 1.8;
+}
+
+.successSub {
+  color: rgba(11, 16, 32, 0.66);
+  line-height: 1.7;
+}
+
+@media (max-width: 980px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .right {
+    justify-content: center;
+  }
+}
+
