@@ -49,7 +49,7 @@ export default function Admin({ user }) {
   }
 
   const downloadCSV = () => {
-    const headers = "STUDENT_ID,FULL_NAME,EMAIL,MAJORS,INTAKE,JOINED,ATTENDANCE_COUNT,TOTAL_XP\n";
+    const headers = "STUDENT ID,FULL NAME,EMAIL,MAJORS,INTAKE,JOINED,ATTENDANCE COUNT,TOTAL XP\n";
     const rows = processedRoster.map(u => {
       const userAtts = attendances.filter(a => a.userID === u.id).length;
       const safeAttendance = `${userAtts} of ${events.length}`; 
@@ -190,22 +190,21 @@ export default function Admin({ user }) {
     return 0;
   });
 
-  if (!isGroupLeader) return <div style={containerStyle}><div style={cardStyle}><div style={{backgroundColor: '#1a1c21', color: 'white', padding: '25px', borderBottom: '4px solid white'}}><h2 style={{ margin: 0, fontWeight: '900' }}>[ ACCESS_DENIED ]</h2></div></div></div>;
+  if (!isGroupLeader) return <div style={containerStyle}><div style={cardStyle}><div style={{backgroundColor: '#1a1c21', color: 'white', padding: '25px', borderBottom: '4px solid white'}}><h2 style={{ margin: 0, fontWeight: '900' }}>[ ACCESS DENIED ]</h2></div></div></div>;
   const sortedLeaderboard = [...users].sort((a, b) => (b.xp || 0) - (a.xp || 0));
 
   return (
     <div style={containerStyle}>
       <div style={cardStyle}>
         
-        <div style={{ backgroundColor: '#1a1c21', color: 'white', padding: '25px', borderBottom: '4px solid white', textAlign: 'left' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ backgroundColor: '#1a1c21', color: 'white', padding: '20px 25px', borderBottom: '4px solid white', textAlign: 'left' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-              {/* REMOVED FILTER */}
-              <img src="/icons/program-icon-magenta.svg" style={{ height: '30px' }} alt="Logo" />
-              <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '900', letterSpacing: '2px' }}>[ SYSTEM_ADMIN_OVERRIDE ]</h2>
+              <img src="/icons/logo.svg" style={{ height: '30px', objectFit: 'contain' }} alt="Logo" />
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '900', letterSpacing: '1px' }}>[ SYSTEM ADMIN OVERRIDE ]</h2>
             </div>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <span style={{ background: '#ff57f6', color: 'white', padding: '4px 10px', fontSize: '12px', fontWeight: '900', border: '2px solid white' }}>GROUP_LEADER</span>
+              <span style={{ background: '#ff57f6', color: 'white', padding: '4px 10px', fontSize: '10px', fontWeight: '900', border: '2px solid white' }}>GROUP LEADER</span>
               <button onClick={() => navigate('/')} style={miniBtnStyle}><img src="/icons/camera.png" style={{ width: '10px', transform: 'rotate(180deg)', marginRight: '4px' }} alt="back" />DASHBOARD</button>
             </div>
           </div>
@@ -214,44 +213,47 @@ export default function Admin({ user }) {
 
         <div style={{ display: 'flex', borderBottom: '4px solid black' }}>
           {['EVENTS', 'ROSTER', 'LEADERBOARD'].map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} style={{ flex: 1, padding: '15px', fontWeight: '900', fontSize: '14px', cursor: 'pointer', backgroundColor: activeTab === tab ? 'white' : '#ddd', border: 'none', borderRight: '4px solid black', borderBottom: activeTab === tab ? 'none' : '4px solid black', color: 'black', outline: 'none' }}>{tab}</button>
+            <button key={tab} onClick={() => setActiveTab(tab)} style={{ flex: 1, padding: '12px 5px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', backgroundColor: activeTab === tab ? 'white' : '#ddd', border: 'none', borderRight: '4px solid black', borderBottom: activeTab === tab ? 'none' : '4px solid black', color: 'black', outline: 'none' }}>{tab}</button>
           ))}
         </div>
 
-        <div style={{ padding: '20px', overflowX: 'auto', color: 'black' }}>
+        <div style={{ padding: '20px', overflowX: 'auto', color: 'black', boxSizing: 'border-box' }}>
           {loading ? ( <div style={{ padding: '40px', textAlign: 'center', fontWeight: '900' }}>SYNCING...</div> ) : (
             <>
               {activeTab === 'EVENTS' && (
                 <div>
-                  <div style={{ border: '4px solid black', padding: '20px', backgroundColor: isEditing ? '#f8f9fa' : '#f9f9f9', marginBottom: '30px', boxShadow: '6px 6px 0px #3ea1f3' }}>
-                    <h3 style={{ margin: '0 0 15px 0', fontWeight: '900', textTransform: 'uppercase' }}>{isEditing ? 'EDIT_EVENT' : 'DEPLOY_EVENT'}</h3>
+                  <div style={{ border: '4px solid black', padding: '20px', backgroundColor: isEditing ? '#f8f9fa' : '#f9f9f9', marginBottom: '30px', boxShadow: '6px 6px 0px #3ea1f3', boxSizing: 'border-box' }}>
+                    
+                    <h3 style={{ margin: '0 0 5px 0', fontWeight: '900', textTransform: 'uppercase' }}>{isEditing ? 'EDIT EVENT' : 'CREATE EVENT'}</h3>
+                    <p style={{ margin: '0 0 15px 0', fontSize: '11px', fontWeight: 'bold', color: '#666' }}>Deploy a new workshop or mission to generate a scanable QR code for attendees.</p>
+
                     <form onSubmit={handleSaveEvent} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                      <input placeholder="EVENT_NAME" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required style={inputStyle} />
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        <select value={form.track} onChange={e => setForm(f => ({ ...f, track: e.target.value }))} style={inputStyle}>
+                      <input placeholder="EVENT NAME" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required style={inputStyle} />
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        <select value={form.track} onChange={e => setForm(f => ({ ...f, track: e.target.value }))} style={{...inputStyle, flex: '1 1 120px'}}>
                           {['General', 'Compute', 'Networking', 'Security', 'AI/ML'].map(t => <option key={t}>{t}</option>)}
                         </select>
-                        <input type="number" placeholder="XP_REWARD" value={form.xp_reward} onChange={e => setForm(f => ({ ...f, xp_reward: Number(e.target.value) }))} style={{ ...inputStyle, width: '150px' }} />
+                        <input type="number" placeholder="XP REWARD" value={form.xp_reward} onChange={e => setForm(f => ({ ...f, xp_reward: Number(e.target.value) }))} style={{ ...inputStyle, flex: '1 1 100px' }} />
                       </div>
                       <div>
-                        <label style={{ fontSize: '10px', fontWeight: '900', display: 'block', marginBottom: '5px' }}>SKILLS_UNLOCKED (COMMA SEPARATED)</label>
+                        <label style={{ fontSize: '10px', fontWeight: '900', display: 'block', marginBottom: '5px' }}>SKILLS UNLOCKED (COMMA SEPARATED)</label>
                         <input placeholder="e.g. EC2 Basics, Lambda Lab" value={form.unlocked_skills} onChange={e => setForm(f => ({ ...f, unlocked_skills: e.target.value }))} style={inputStyle} />
                       </div>
                       <div style={{ padding: '15px', border: '3px dashed black', backgroundColor: 'white' }}>
-                        <label style={{ fontSize: '10px', fontWeight: '900', display: 'block', marginBottom: '10px' }}>CUSTOM_STAMP_ICON (OPTIONAL)</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <label style={{ fontSize: '10px', fontWeight: '900', display: 'block', marginBottom: '10px' }}>CUSTOM STAMP ICON (OPTIONAL)</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
                           <div style={{ width: '50px', height: '50px', border: '2px solid black', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#eee' }}>
                             {form.emoji ? <img src={form.emoji} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="Stamp" /> : <span style={{fontSize: '10px', fontWeight: 'bold'}}>NONE</span>}
                           </div>
                           <label style={{ cursor: 'pointer', border: '2px solid black', backgroundColor: '#00e87f', padding: '8px 15px', fontWeight: '900', fontSize: '11px', boxShadow: '3px 3px 0px black', color: 'black' }}>
-                            UPLOAD_STAMP_IMAGE
+                            UPLOAD STAMP IMAGE
                             <input type="file" accept="image/*" onChange={handleStampUpload} style={{ display: 'none' }} />
                           </label>
                           {form.emoji && <button type="button" onClick={() => setForm(f => ({...f, emoji: ''}))} style={{ border: '2px solid black', background: 'white', padding: '8px 12px', fontWeight: '900', cursor: 'pointer' }}>CLEAR</button>}
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                        <button type="submit" disabled={processing} style={{ ...protoBtn, backgroundColor: '#000', color: '#fff', flex: 2 }}>{processing ? 'UPLOADING...' : 'SAVE_EVENT'}</button>
+                        <button type="submit" disabled={processing} style={{ ...protoBtn, backgroundColor: '#000', color: '#fff', flex: 2 }}>{processing ? 'UPLOADING...' : 'SAVE EVENT'}</button>
                         {isEditing && <button type="button" onClick={cancelEdit} style={{ ...protoBtn, backgroundColor: '#fff', color: '#000', flex: 1 }}>CANCEL</button>}
                       </div>
                     </form>
@@ -259,15 +261,15 @@ export default function Admin({ user }) {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                     {events.map(event => (
                       <div key={event.id} style={{ display: 'flex', alignItems: 'center', background: 'white', padding: '15px', border: '3px solid black', boxShadow: '4px 4px 0px rgba(0,0,0,0.1)', flexWrap: 'wrap' }}>
-                        <img src={event.emoji || "/icons/speaker.svg"} style={{ width: '40px', height: '40px', objectFit: 'contain', marginRight: '15px' }} alt="Event" />
-                        <div style={{ flex: 1, minWidth: '200px' }}>
-                          <div style={{ fontWeight: '900', fontSize: '18px', textTransform: 'uppercase' }}>{event.name}</div>
-                          <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#666' }}>{event.track} • {event.xp_reward} XP</div>
+                        <img src={event.emoji || "/icons/speaker.svg"} style={{ width: '35px', height: '35px', objectFit: 'contain', marginRight: '15px' }} alt="Event" />
+                        <div style={{ flex: 1, minWidth: '150px' }}>
+                          <div style={{ fontWeight: '900', fontSize: '15px', textTransform: 'uppercase', wordWrap: 'break-word' }}>{event.name}</div>
+                          <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#666' }}>{event.track} • {event.xp_reward} XP</div>
                         </div>
-                        <div style={{ display: 'flex', gap: '5px', marginTop: '10px' }}>
-                          <button onClick={() => openQR(event)} style={{ border: '3px solid black', background: '#3ea1f3', color: 'white', padding: '8px 12px', fontWeight: '900', cursor: 'pointer' }}>QR</button>
-                          <button onClick={() => startEdit(event)} style={{ border: '3px solid black', background: 'white', color: 'black', padding: '8px 12px', fontWeight: '900', cursor: 'pointer' }}>EDIT</button>
-                          <button onClick={() => handleDeleteEvent(event.id)} style={{ border: '3px solid black', background: '#ef4444', color: 'white', padding: '8px 12px', fontWeight: '900', cursor: 'pointer' }}>DEL</button>
+                        <div style={{ display: 'flex', gap: '5px', marginTop: '10px', width: '100%' }}>
+                          <button onClick={() => openQR(event)} style={{ border: '3px solid black', background: '#3ea1f3', color: 'white', padding: '6px 10px', fontWeight: '900', cursor: 'pointer', fontSize: '11px', flex: 1 }}>QR</button>
+                          <button onClick={() => startEdit(event)} style={{ border: '3px solid black', background: 'white', color: 'black', padding: '6px 10px', fontWeight: '900', cursor: 'pointer', fontSize: '11px', flex: 1 }}>EDIT</button>
+                          <button onClick={() => handleDeleteEvent(event.id)} style={{ border: '3px solid black', background: '#ef4444', color: 'white', padding: '6px 10px', fontWeight: '900', cursor: 'pointer', fontSize: '11px', flex: 1 }}>DEL</button>
                         </div>
                       </div>
                     ))}
@@ -278,72 +280,76 @@ export default function Admin({ user }) {
               {activeTab === 'ROSTER' && (
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '15px' }}>
-                    <button onClick={downloadCSV} style={{ ...protoBtn, backgroundColor: '#ff9900', color: 'black' }}>
+                    <button onClick={downloadCSV} style={{ ...protoBtn, backgroundColor: '#ff9900', color: 'black', padding: '10px' }}>
                       <img src="/icons/upload.png" style={{ width: '12px', transform: 'rotate(180deg)', marginRight: '8px' }} alt="Download" />
-                      EXPORT_CSV
+                      EXPORT CSV
                     </button>
                   </div>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={tableStyle}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#3ea1f3', color: 'white' }}>
+                          <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('member_id')}>STUDENT ID{getSortIndicator('member_id')}</th>
+                          <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('full_name')}>FULL NAME{getSortIndicator('full_name')}</th>
+                          <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('email')}>EMAIL{getSortIndicator('email')}</th>
+                          <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('major')}>MAJORS{getSortIndicator('major')}</th>
+                          <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('intake')}>FIRST INTAKE{getSortIndicator('intake')}</th>
+                          <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('attendance')}>ATTENDANCE{getSortIndicator('attendance')}</th>
+                          <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('joined')}>JOINED{getSortIndicator('joined')}</th>
+                          <th style={thStyle}>ACTION</th>
+                        </tr>
+                        <tr style={{ backgroundColor: '#fffbe6' }}>
+                          <th style={{ padding: '5px', border: '3px solid black' }}><input placeholder="Filter..." value={filters.member_id} onChange={e => handleFilterChange(e, 'member_id')} style={filterInputStyle} /></th>
+                          <th style={{ padding: '5px', border: '3px solid black' }}><input placeholder="Filter..." value={filters.full_name} onChange={e => handleFilterChange(e, 'full_name')} style={filterInputStyle} /></th>
+                          <th style={{ padding: '5px', border: '3px solid black' }}><input placeholder="Filter..." value={filters.email} onChange={e => handleFilterChange(e, 'email')} style={filterInputStyle} /></th>
+                          <th style={{ padding: '5px', border: '3px solid black' }}><select value={filters.major} onChange={e => handleFilterChange(e, 'major')} style={filterInputStyle}><option value="">All</option>{uniqueMajors.map(m => <option key={m} value={m}>{m}</option>)}</select></th>
+                          <th style={{ padding: '5px', border: '3px solid black' }}><select value={filters.intake} onChange={e => handleFilterChange(e, 'intake')} style={filterInputStyle}><option value="">All</option>{uniqueIntakes.map(i => <option key={i} value={i}>{i}</option>)}</select></th>
+                          <th style={{ padding: '5px', border: '3px solid black' }}><input placeholder="Filter..." value={filters.attendance} onChange={e => handleFilterChange(e, 'attendance')} style={filterInputStyle} /></th>
+                          <th style={{ padding: '5px', border: '3px solid black' }}><input placeholder="Filter..." value={filters.joined} onChange={e => handleFilterChange(e, 'joined')} style={filterInputStyle} /></th>
+                          <th style={{ padding: '5px', border: '3px solid black', backgroundColor: '#eee' }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {processedRoster.map((u, i) => {
+                          const userAtts = attendances.filter(a => a.userID === u.id).length;
+                          return (
+                            <tr key={u.id} style={{ backgroundColor: i % 2 === 0 ? 'white' : '#f9f9f9' }}>
+                              <td style={tdStyle}>{u.member_id}</td><td style={tdStyle}><strong>{u.full_name}</strong></td><td style={tdStyle}>{u.email}</td><td style={tdStyle}>{u.major?.join(', ')}</td><td style={tdStyle}>{u.intake}</td>
+                              <td style={{ ...tdStyle, fontWeight: '900', textAlign: 'center' }}>{userAtts} / {events.length}</td><td style={tdStyle}>{new Date(u.createdAt).toLocaleDateString()}</td>
+                              <td style={{ ...tdStyle, textAlign: 'center' }}><button onClick={() => handleDeleteUser(u.id, u.full_name)} disabled={processing} style={{ backgroundColor: '#ef4444', color: 'white', border: '2px solid black', padding: '4px 8px', fontWeight: '900', cursor: 'pointer', fontSize: '10px' }}>DEL</button></td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'LEADERBOARD' && (
+                <div style={{ overflowX: 'auto' }}>
                   <table style={tableStyle}>
-                    <thead>
-                      <tr style={{ backgroundColor: '#3ea1f3', color: 'white' }}>
-                        <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('member_id')}>STUDENT_ID{getSortIndicator('member_id')}</th>
-                        <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('full_name')}>FULL_NAME{getSortIndicator('full_name')}</th>
-                        <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('email')}>EMAIL{getSortIndicator('email')}</th>
-                        <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('major')}>MAJORS{getSortIndicator('major')}</th>
-                        <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('intake')}>INTAKE{getSortIndicator('intake')}</th>
-                        <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('attendance')}>ATTENDANCE{getSortIndicator('attendance')}</th>
-                        <th style={{...thStyle, cursor: 'pointer'}} onClick={() => requestSort('joined')}>JOINED{getSortIndicator('joined')}</th>
-                        <th style={thStyle}>ACTION</th>
-                      </tr>
-                      <tr style={{ backgroundColor: '#fffbe6' }}>
-                        <th style={{ padding: '5px', border: '3px solid black' }}><input placeholder="Filter..." value={filters.member_id} onChange={e => handleFilterChange(e, 'member_id')} style={filterInputStyle} /></th>
-                        <th style={{ padding: '5px', border: '3px solid black' }}><input placeholder="Filter..." value={filters.full_name} onChange={e => handleFilterChange(e, 'full_name')} style={filterInputStyle} /></th>
-                        <th style={{ padding: '5px', border: '3px solid black' }}><input placeholder="Filter..." value={filters.email} onChange={e => handleFilterChange(e, 'email')} style={filterInputStyle} /></th>
-                        <th style={{ padding: '5px', border: '3px solid black' }}><select value={filters.major} onChange={e => handleFilterChange(e, 'major')} style={filterInputStyle}><option value="">All</option>{uniqueMajors.map(m => <option key={m} value={m}>{m}</option>)}</select></th>
-                        <th style={{ padding: '5px', border: '3px solid black' }}><select value={filters.intake} onChange={e => handleFilterChange(e, 'intake')} style={filterInputStyle}><option value="">All</option>{uniqueIntakes.map(i => <option key={i} value={i}>{i}</option>)}</select></th>
-                        <th style={{ padding: '5px', border: '3px solid black' }}><input placeholder="Filter..." value={filters.attendance} onChange={e => handleFilterChange(e, 'attendance')} style={filterInputStyle} /></th>
-                        <th style={{ padding: '5px', border: '3px solid black' }}><input placeholder="Filter..." value={filters.joined} onChange={e => handleFilterChange(e, 'joined')} style={filterInputStyle} /></th>
-                        <th style={{ padding: '5px', border: '3px solid black', backgroundColor: '#eee' }}></th>
-                      </tr>
-                    </thead>
+                    <thead><tr style={{ backgroundColor: '#9b68f6', color: 'white' }}><th style={thStyle}>RANK</th><th style={thStyle}>BUILDER</th><th style={thStyle}>ACADEMIC YR</th><th style={thStyle}>TIER & LVL</th><th style={thStyle}>ATTENDANCE</th><th style={thStyle}>XP</th></tr></thead>
                     <tbody>
-                      {processedRoster.map((u, i) => {
+                      {sortedLeaderboard.map((u, i) => {
                         const userAtts = attendances.filter(a => a.userID === u.id).length;
+                        const level = Math.floor((u.xp || 0)/1000) + 1;
                         return (
-                          <tr key={u.id} style={{ backgroundColor: i % 2 === 0 ? 'white' : '#f9f9f9' }}>
-                            <td style={tdStyle}>{u.member_id}</td><td style={tdStyle}><strong>{u.full_name}</strong></td><td style={tdStyle}>{u.email}</td><td style={tdStyle}>{u.major?.join(', ')}</td><td style={tdStyle}>{u.intake}</td>
-                            <td style={{ ...tdStyle, fontWeight: '900', textAlign: 'center' }}>{userAtts} / {events.length}</td><td style={tdStyle}>{new Date(u.createdAt).toLocaleDateString()}</td>
-                            <td style={{ ...tdStyle, textAlign: 'center' }}><button onClick={() => handleDeleteUser(u.id, u.full_name)} disabled={processing} style={{ backgroundColor: '#ef4444', color: 'white', border: '2px solid black', padding: '4px 8px', fontWeight: '900', cursor: 'pointer', fontSize: '10px' }}>DEL</button></td>
+                          <tr key={u.id}>
+                            <td style={{ ...tdStyle, fontWeight: '900', textAlign: 'center' }}>
+                              {i === 0 ? <img src="/icons/first.png" alt="1st" style={{ width: '20px', verticalAlign: 'middle' }} /> :
+                               i === 1 ? <img src="/icons/second.png" alt="2nd" style={{ width: '20px', verticalAlign: 'middle' }} /> :
+                               i === 2 ? <img src="/icons/third.png" alt="3rd" style={{ width: '20px', verticalAlign: 'middle' }} /> : 
+                               `#${i + 1}`}
+                            </td>
+                            <td style={tdStyle}><strong>{u.full_name}</strong></td><td style={tdStyle}>YR {u.year}</td><td style={tdStyle}>{u.tier?.toUpperCase()} • LVL {level}</td>
+                            <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 'bold' }}>{userAtts} Events</td><td style={{ ...tdStyle, fontWeight: '900', color: '#9b68f6' }}>{u.xp || 0} PT</td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
                 </div>
-              )}
-
-              {activeTab === 'LEADERBOARD' && (
-                <table style={tableStyle}>
-                  <thead><tr style={{ backgroundColor: '#9b68f6', color: 'white' }}><th style={thStyle}>RANK</th><th style={thStyle}>BUILDER</th><th style={thStyle}>ACADEMIC YR</th><th style={thStyle}>TIER & LVL</th><th style={thStyle}>ATTENDANCE</th><th style={thStyle}>XP</th></tr></thead>
-                  <tbody>
-                    {sortedLeaderboard.map((u, i) => {
-                      const userAtts = attendances.filter(a => a.userID === u.id).length;
-                      const level = Math.floor((u.xp || 0)/1000) + 1;
-                      return (
-                        <tr key={u.id}>
-                          <td style={{ ...tdStyle, fontWeight: '900', textAlign: 'center' }}>
-                            {i === 0 ? <img src="/icons/first.png" alt="1st" style={{ width: '20px', verticalAlign: 'middle' }} /> :
-                             i === 1 ? <img src="/icons/second.png" alt="2nd" style={{ width: '20px', verticalAlign: 'middle' }} /> :
-                             i === 2 ? <img src="/icons/third.png" alt="3rd" style={{ width: '20px', verticalAlign: 'middle' }} /> : 
-                             `#${i + 1}`}
-                          </td>
-                          <td style={tdStyle}><strong>{u.full_name}</strong></td><td style={tdStyle}>YR {u.year}</td><td style={tdStyle}>{u.tier?.toUpperCase()} • LVL {level}</td>
-                          <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 'bold' }}>{userAtts} Events</td><td style={{ ...tdStyle, fontWeight: '900', color: '#9b68f6' }}>{u.xp || 0} PT</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
               )}
             </>
           )}
@@ -352,9 +358,14 @@ export default function Admin({ user }) {
       
       {qrEvent && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0, 0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }} onClick={closeQR}>
-          <div style={{ background: 'white', padding: '30px', border: '6px solid black', boxShadow: '15px 15px 0px #00e87f', textAlign: 'center', width: '90%', maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: '24px', fontWeight: '900', color: 'black', textTransform: 'uppercase', marginBottom: '20px' }}>{qrEvent.name}</div>
-            {qrDataUrl ? <img src={qrDataUrl} alt="QR code" style={{ width: '100%', maxWidth: '280px', margin: '0 auto', display: 'block', border: '4px solid black', padding: '10px' }} /> : <div>GENERATING...</div>}
+          <div style={{ background: 'white', padding: '30px', border: '6px solid black', boxShadow: '15px 15px 0px #00e87f', textAlign: 'center', width: '90%', maxWidth: '400px', boxSizing: 'border-box' }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: '20px', fontWeight: '900', color: 'black', textTransform: 'uppercase', marginBottom: '20px', wordWrap: 'break-word' }}>{qrEvent.name}</div>
+            {qrDataUrl ? <img src={qrDataUrl} alt="QR code" style={{ width: '100%', maxWidth: '280px', margin: '0 auto', display: 'block', border: '4px solid black', padding: '10px', boxSizing: 'border-box' }} /> : <div>GENERATING...</div>}
+            
+            <div style={{ fontSize: '14px', fontWeight: '900', color: '#ff9900', marginTop: '20px' }}>
+              REFRESHING IN: {timeLeft}s
+            </div>
+
             <button onClick={closeQR} style={{ ...protoBtn, width: '100%', marginTop: '25px', backgroundColor: 'black', color: 'white' }}>CLOSE</button>
           </div>
         </div>
@@ -363,21 +374,15 @@ export default function Admin({ user }) {
   );
 }
 
-// AWS BRAND STYLES
-const containerStyle = { 
-  minHeight: '100vh', padding: '40px 20px', color: 'black', backgroundColor: '#1a1c21', 
-  backgroundImage: `
-    linear-gradient(#2d3139 2px, transparent 2px), 
-    linear-gradient(90deg, #2d3139 2px, transparent 2px),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280'%3E%3Crect x='0' y='0' width='80' height='80' fill='%23ff9900' opacity='0.8'/%3E%3Crect x='200' y='0' width='80' height='80' fill='%23ff9900' opacity='0.8'/%3E%3Crect x='120' y='0' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='80' y='40' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='160' y='40' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='40' y='80' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='200' y='80' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='120' y='80' width='40' height='40' fill='%23ff57f6' opacity='0.8'/%3E%3Crect x='80' y='120' width='40' height='40' fill='%23ff57f6' opacity='0.8'/%3E%3Crect x='160' y='120' width='40' height='40' fill='%23ff57f6' opacity='0.8'/%3E%3Crect x='0' y='160' width='80' height='80' fill='%23ff9900' opacity='0.8'/%3E%3Crect x='200' y='160' width='80' height='80' fill='%23ff9900' opacity='0.8'/%3E%3Crect x='120' y='200' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3C/svg%3E")
-  `, 
-  backgroundSize: '40px 40px, 40px 40px, 500px 500px', backgroundPosition: '0 0, 0 0, right 50px', backgroundRepeat: 'repeat, repeat, no-repeat', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' 
+const containerStyle = { minHeight: '100vh', padding: '5% 15px', color: 'black', backgroundColor: '#1a1c21', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', boxSizing: 'border-box',
+  backgroundImage: `url("/icons/background.png")`, 
+  backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', backgroundAttachment: 'fixed'
 };
-const cardStyle = { width: '100%', maxWidth: '1000px', backgroundColor: 'white', border: '4px solid white', boxShadow: '12px 12px 0px black', overflow: 'hidden' };
-const tableStyle = { width: '100%', borderCollapse: 'collapse', border: '4px solid black' };
-const thStyle = { padding: '12px', border: '3px solid black', textAlign: 'left', fontWeight: '900', fontSize: '12px', letterSpacing: '1px' };
-const tdStyle = { padding: '12px', border: '2px solid black', fontSize: '13px', color: 'black' };
-const inputStyle = { padding: '14px', border: '3px solid black', fontSize: '14px', fontWeight: '900', width: '100%', boxSizing: 'border-box', outline: 'none' };
-const filterInputStyle = { width: '100%', padding: '6px', fontSize: '12px', border: '2px solid black', boxSizing: 'border-box', outline: 'none', fontWeight: 'bold' };
-const protoBtn = { padding: '14px', border: '4px solid black', fontWeight: '900', cursor: 'pointer', boxShadow: '4px 4px 0px black', fontSize: '14px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center' };
-const miniBtnStyle = { border: '2px solid white', backgroundColor: 'transparent', color: 'white', padding: '6px 12px', fontSize: '12px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center' };
+const cardStyle = { width: '100%', maxWidth: '1000px', backgroundColor: 'white', border: '4px solid white', boxShadow: '12px 12px 0px black', overflow: 'hidden', boxSizing: 'border-box' };
+const tableStyle = { width: '100%', borderCollapse: 'collapse', border: '4px solid black', minWidth: '600px' };
+const thStyle = { padding: '10px', border: '3px solid black', textAlign: 'left', fontWeight: '900', fontSize: '11px', letterSpacing: '1px' };
+const tdStyle = { padding: '10px', border: '2px solid black', fontSize: '11px', color: 'black' };
+const inputStyle = { padding: '12px', border: '3px solid black', fontSize: '12px', fontWeight: '900', width: '100%', boxSizing: 'border-box', outline: 'none' };
+const filterInputStyle = { width: '100%', padding: '6px', fontSize: '11px', border: '2px solid black', boxSizing: 'border-box', outline: 'none', fontWeight: 'bold' };
+const protoBtn = { padding: '12px', border: '4px solid black', fontWeight: '900', cursor: 'pointer', boxShadow: '4px 4px 0px black', fontSize: '12px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const miniBtnStyle = { border: '2px solid white', backgroundColor: 'transparent', color: 'white', padding: '6px 12px', fontSize: '10px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center' };
