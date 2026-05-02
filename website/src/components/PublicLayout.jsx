@@ -2,20 +2,19 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import Navbar from './Navbar'
 import Footer from './Footer'
-import styles from './PublicLayout.module.css'
+import { COLORS, FONTS, SPACING } from '../styles/tokens'
 
 export default function PublicLayout() {
   const { pathname } = useLocation()
 
-  /* Scroll to top on every navigation */
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' })
   }, [pathname])
 
   return (
-    <div className={styles.layout}>
+    <div style={{ background: COLORS.bg, minHeight: '100vh', fontFamily: FONTS.mono }}>
       <Navbar />
-      <main className={styles.main}>
+      <main style={{ paddingTop: SPACING.navbar }}>
         <Outlet />
       </main>
       <Footer />

@@ -1,44 +1,51 @@
 export const COLORS = {
-  bg: '#FFFFFF',
-  bgDark: '#1a1f2e',
-  primary: '#FF5722',
-  secondary: '#6B3FA0',
-  tertiary: '#0099FF',
-  text: '#000000',
-  textMuted: '#666666',
-  textLight: '#333333',
-  border: '#CCCCCC',
-  card: '#FFFFFF',
-};
+  bg:          '#F5F4EF',
+  bgDark:      '#1A1A2E',
+  purple:      '#3D2C8D',
+  purpleLight: '#6C5CE7',
+  orange:      '#FF6B2B',
+  blue:        '#4A90D9',
+  white:       '#FFFFFF',
+  black:       '#111111',
+  border:      '#111111',
+  muted:       '#6B6B6B',
+  skeleton:    '#E0DED8',
+}
 
 export const FONTS = {
-  heading: "'Roboto', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  body: "'Roboto', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  mono: "'Roboto Mono', 'Courier New', monospace",
-};
+  heading: "'Space Grotesk', sans-serif",
+  mono:    "'IBM Plex Mono', monospace",
+}
 
-export const TYPOGRAPHY = {
-  headingWeight: 700,
-  headingWeightBlack: 900,
-  headingTransform: 'uppercase',
-  headingSpacing: '0.08em',
-  bodyWeight: 400,
-  labelTransform: 'uppercase',
-  labelWeight: 700,
-};
+export const WEIGHT = {
+  regular: 400,
+  medium:  500,
+  bold:    700,
+  black:   900,
+}
 
 export const SPACING = {
-  sectionY: '60px',
-  sectionYLarge: '80px',
-  cardPad: '30px',
-  cardPadLarge: '40px',
-  gridGap: '30px',
-  gridGapLarge: '40px',
-  maxWidth: '1200px',
-};
+  xs:      '4px',
+  sm:      '8px',
+  md:      '16px',
+  lg:      '24px',
+  xl:      '48px',
+  xxl:     '96px',
+  section: '80px',
+  navbar:  '60px',
+}
 
-export const SHAPE = {
-  buttonRadius: '6px',
-  cardRadius: '0px',
-  inputRadius: '4px',
-};
+export const SHADOW = {
+  card:      '4px 4px 0px #111111',
+  cardHover: '6px 6px 0px #111111',
+  none:      'none',
+}
+
+export const RADIUS = {
+  none:   '0px',
+  circle: '50%',
+}
+
+export const Z = {
+  navbar: 100,
+}

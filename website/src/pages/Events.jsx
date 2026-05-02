@@ -1,497 +1,1158 @@
-import { useEffect, useMemo, useRef } from 'react'
-import anime from 'animejs'
-import styles from './Events.module.css'
+import { useEffect, useRef, useState } from "react";
+import anime from "../utils/anime";
+import { useBreakpoint } from "../hooks/useBreakpoint";
+import { getUpcomingEvents, MEETUP_GROUP_URL } from "../services/meetupService";
+import { COLORS, FONTS, WEIGHT, SHADOW } from "../styles/tokens";
+import {
+  InstagramIcon,
+  WhatsAppIcon,
+  CalendarIcon,
+  RadarIcon,
+} from "../components/PixelIcons";
 
-const INSTAGRAM_LINK = 'https://www.instagram.com/murdochdubaislt/'
-const MEETUP_LINK =
-  'https://www.meetup.com/aws-cloud-club-at-murdoch-university-dubai/'
-const WHATSAPP_LINK = 'https://wa.me/?text=Hey%20AWS%20Cloud%20Club%20Murdoch%20%E2%80%94%20how%20can%20I%20join%20the%20WhatsApp%20community%3F'
-
-// Update these in-place as events are announced.
-const NEXT_RAID = {
-  dateBadge: 'OCT 24',
-  label: 'NEXT AVAILABLE RAID',
-  title: 'DEPLOY YOUR FIRST SERVER',
-  meta: { type: 'Workshop', dateTime: 'TBA · 6:00 PM', venue: 'Murdoch University Dubai' },
-  description:
-    'Get your first deployment under your belt. We’ll walk through the basics and ship something real together.',
-  bullets: [
-    'Beginner-friendly, hands-on session',
-    'Bring a laptop (or pair with a teammate)',
-    'Earn a Cloud Passport stamp for attending',
-  ],
-  registerUrl: MEETUP_LINK,
-}
+const INSTAGRAM_LINK = "https://www.instagram.com/murdochdubaislt/";
+const WHATSAPP_LINK = "#";
 
 const REG_PROTOCOL = [
-  { badge: 'M1', step: 'DISCOVER', desc: 'Watch Instagram + WhatsApp for the next drop.' },
-  { badge: 'M2', step: 'SECURE SLOT', desc: 'Register on Meetup to lock your seat.' },
-  { badge: 'M3', step: 'EQUIP TICKET', desc: 'Check your confirmation + event details.' },
-  { badge: 'M4', step: 'JOIN RAID', desc: 'Show up, build, and earn your stamp.' },
-]
+  {
+    badge: "Step 1",
+    color: COLORS.orange,
+    step: "DISCOVER",
+    icon: "https://img.icons8.com/fluency/48/wifi.png",
+    desc: ["Follow our insta + join the whatsapp — that's where drops happen first"],
+  },
+  {
+    badge: "Step 2",
+    color: COLORS.purple,
+    step: "SECURE SLOT",
+    icon: "https://img.icons8.com/external-tal-revivo-color-tal-revivo/48/external-meetup-app-for-hosting-in-person-events-with-similar-interests-logo-color-tal-revivo.png",
+    desc: ["Hit the ", { href: MEETUP_GROUP_URL, text: "meetup.com" }, " link and register — slots are limited, first come first served"],
+  },
+  {
+    badge: "Step 3",
+    color: COLORS.blue,
+    step: "EQUIP TICKET",
+    icon: "https://img.icons8.com/doodle/96/ticket.png",
+    desc: ["Check your email for the confirmation — that is your ticket in, you are good to go."],
+  },
+  {
+    badge: "Step 4",
+    color: COLORS.black,
+    step: "JOIN RAID",
+    icon: "https://img.icons8.com/comic/100/today.png",
+    desc: ["Show up, scan in, eat good, build better"],
+  },
+];
 
-const UPCOMING_EVENTS = [
-  {
-    name: 'S3 + CloudFront Masterclass',
-    type: 'Workshop',
-    dateTime: 'TBA · 6:00 PM',
-    venue: 'Murdoch University Dubai',
-    description:
-      'Host and accelerate a real website with S3 and CloudFront. Learn best-practice caching and deployment.',
-    registerUrl: MEETUP_LINK,
-    tone: 'purple',
-  },
-  {
-    name: 'Serverless Micro-Hack',
-    type: 'Build Session',
-    dateTime: 'TBA · 6:30 PM',
-    venue: 'Murdoch University Dubai',
-    description:
-      'Ship a tiny serverless app end-to-end. Pair up, build fast, and demo your solution.',
-    registerUrl: MEETUP_LINK,
-    tone: 'blue',
-  },
-]
+function renderDesc(desc) {
+  return desc.map((part, i) =>
+    typeof part === "string" ? part : (
+      <a key={i} href={part.href} target="_blank" rel="noreferrer"
+        style={{ color: COLORS.orange, textDecoration: "underline", fontWeight: WEIGHT.bold }}>
+        {part.text}
+      </a>
+    )
+  );
+}
 
-const PAST_EVENTS = [
-  {
-    name: 'Cloud 101: The Kickoff',
-    type: 'Session',
-    dateTime: 'Past event',
-    venue: 'Murdoch University Dubai',
-    registerUrl: MEETUP_LINK,
-    tone: 'image',
-  },
-  {
-    name: 'Game Dev on AWS',
-    type: 'Workshop',
-    dateTime: 'Past event',
-    venue: 'Murdoch University Dubai',
-    registerUrl: MEETUP_LINK,
-    tone: 'purple',
-  },
-  {
-    name: 'End of Year Buildathon',
-    type: 'Buildathon',
-    dateTime: 'Past event',
-    venue: 'Murdoch University Dubai',
-    registerUrl: MEETUP_LINK,
-    tone: 'orange',
-  },
-]
+function ServerRackIllustration() {
+  return (
+    <div
+      style={{
+        background: "#0D0D1A",
+        border: `2px solid ${COLORS.black}`,
+        padding: "12px",
+        minWidth: "160px",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          marginBottom: "10px",
+        }}
+      >
+        <span
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            background: "#27c93f",
+            display: "block",
+          }}
+        />
+        <span
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            background: "#ffbd2e",
+            display: "block",
+          }}
+        />
+        <span
+          style={{
+            fontFamily: FONTS.mono,
+            fontSize: "9px",
+            color: "rgba(255,255,255,0.5)",
+            letterSpacing: "0.06em",
+          }}
+        >
+          SERVER PRIME — 98%
+        </span>
+      </div>
+      {[80, 70, 60, 50, 40].map((w, i) => (
+        <div
+          key={i}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            marginBottom: "6px",
+          }}
+        >
+          <div
+            style={{
+              flex: 1,
+              height: "6px",
+              background: "rgba(255,255,255,0.06)",
+              position: "relative",
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: `${w}%`,
+                background: i === 0 ? COLORS.orange : COLORS.purple,
+              }}
+            />
+          </div>
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: "#27c93f",
+              display: "block",
+              flexShrink: 0,
+            }}
+          />
+        </div>
+      ))}
+      <p
+        style={{
+          fontFamily: FONTS.mono,
+          fontSize: "8px",
+          color: "rgba(255,255,255,0.35)",
+          marginTop: "8px",
+        }}
+      >
+        PROCESSING DEPLOY ON BATTLE_01
+      </p>
+    </div>
+  );
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return "TBA";
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }).toUpperCase();
+  } catch {
+    return dateStr;
+  }
+}
+
+function truncate(str, n) {
+  if (!str) return "";
+  return str.length > n ? str.slice(0, n) + "..." : str;
+}
+
+const MEETUP_ICON = "https://img.icons8.com/external-tal-revivo-color-tal-revivo/48/external-meetup-app-for-hosting-in-person-events-with-similar-interests-logo-color-tal-revivo.png";
 
 export default function Events() {
-  const socialIgRef = useRef(null)
-  const socialWaRef = useRef(null)
-  const socialMeetupRef = useRef(null)
+  const [apiEvents, setApiEvents] = useState(null);
+  const igBtnRef = useRef(null);
+  const waBtnRef = useRef(null);
+  const meetupBtnRef = useRef(null);
+  const { isMobile, isTablet } = useBreakpoint();
 
-  const hasUpcoming = useMemo(() => UPCOMING_EVENTS.length > 0, [])
-  const hasPast = useMemo(() => PAST_EVENTS.length > 0, [])
+  const C = {
+    maxWidth: "1200px",
+    marginInline: "auto",
+    paddingInline: isMobile ? "16px" : isTablet ? "32px" : "48px",
+  };
 
   useEffect(() => {
-    // Initial states (so reveals look consistent even on refresh)
-    const init = (selector) => {
-      document.querySelectorAll(selector).forEach((el) => {
-        el.style.opacity = '0'
-        el.style.transform = 'translateY(18px)'
-      })
+    getUpcomingEvents().then((data) => setApiEvents(data));
+  }, []);
+
+  useEffect(() => {
+    if (apiEvents === null) {
+      anime({
+        targets: ".skeleton-card",
+        opacity: [0.3, 1, 0.3],
+        duration: 1200,
+        loop: true,
+        easing: "easeInOutSine",
+      });
+      return;
     }
-
-    init('[data-anim="hero"]')
-    init('[data-anim="raid"]')
-    init('[data-anim="protocol-step"]')
-    init('[data-anim="upcoming-card"]')
-    init('[data-anim="past-card"]')
-    init('[data-anim="empty"]')
-    init('[data-anim="social"]')
-
-    const tl = anime.timeline({ easing: 'easeOutExpo' })
-
-    tl.add({
-      targets: '[data-anim="hero"]',
-      opacity: [0, 1],
-      translateY: [18, 0],
-      delay: anime.stagger(80),
-      duration: 650,
-    })
-
-    tl.add(
-      {
-        targets: '[data-anim="raid"]',
+    const sel = [
+      '[data-ev="hero"]',
+      '[data-ev="raid"]',
+      '[data-ev="step"]',
+      '[data-ev="card"]',
+      '[data-ev="social"]',
+    ];
+    sel.forEach((s) =>
+      document.querySelectorAll(s).forEach((el) => {
+        el.style.opacity = "0";
+        el.style.transform = "translateY(18px)";
+      }),
+    );
+    anime
+      .timeline({ easing: "easeOutExpo" })
+      .add({
+        targets: '[data-ev="hero"]',
         opacity: [0, 1],
         translateY: [18, 0],
+        delay: anime.stagger(80),
         duration: 650,
-      },
-      '-=250'
-    )
-
-    tl.add(
-      {
-        targets: '[data-anim="protocol-step"]',
-        opacity: [0, 1],
-        translateY: [18, 0],
-        delay: anime.stagger(90),
-        duration: 650,
-      },
-      '-=350'
-    )
-
-    if (hasUpcoming) {
-      tl.add(
+      })
+      .add(
         {
-          targets: '[data-anim="upcoming-card"]',
+          targets: '[data-ev="raid"]',
+          opacity: [0, 1],
+          translateY: [18, 0],
+          duration: 650,
+        },
+        "-=300",
+      )
+      .add(
+        {
+          targets: '[data-ev="step"]',
           opacity: [0, 1],
           translateY: [18, 0],
           delay: anime.stagger(90),
           duration: 650,
         },
-        '-=350'
+        "-=350",
       )
-    } else {
-      tl.add(
+      .add(
         {
-          targets: '[data-anim="empty"]',
-          opacity: [0, 1],
-          translateY: [12, 0],
-          duration: 600,
-        },
-        '-=350'
-      )
-    }
-
-    if (hasPast) {
-      tl.add(
-        {
-          targets: '[data-anim="past-card"]',
+          targets: '[data-ev="card"]',
           opacity: [0, 1],
           translateY: [18, 0],
-          delay: anime.stagger(70),
-          duration: 600,
+          delay: anime.stagger(80),
+          duration: 650,
         },
-        '-=420'
+        "-=350",
       )
-    }
+      .add(
+        {
+          targets: '[data-ev="social"]',
+          opacity: [0, 1],
+          translateY: [18, 0],
+          duration: 650,
+        },
+        "-=300",
+      );
+  }, [apiEvents]);
 
-    tl.add(
-      {
-        targets: '[data-anim="social"]',
-        opacity: [0, 1],
-        translateY: [18, 0],
-        duration: 650,
-      },
-      '-=350'
-    )
-  }, [hasUpcoming, hasPast])
+  const hoverIn = (ref) => {
+    if (ref.current)
+      anime({
+        targets: ref.current,
+        translateY: -3,
+        duration: 200,
+        easing: "easeOutQuad",
+      });
+  };
+  const hoverOut = (ref) => {
+    if (ref.current)
+      anime({
+        targets: ref.current,
+        translateY: 0,
+        duration: 240,
+        easing: "easeOutQuad",
+      });
+  };
 
-  const socialHoverIn = (el) => {
-    if (!el) return
-    anime.remove(el)
-    anime({
-      targets: el,
-      translateY: -2,
-      scale: 1.03,
-      duration: 220,
-      easing: 'easeOutQuad',
-    })
-  }
+  const loading = apiEvents === null;
+  const hasEvents = !loading && apiEvents.length > 0;
+  const isEmpty = !loading && apiEvents.length === 0;
 
-  const socialHoverOut = (el) => {
-    if (!el) return
-    anime.remove(el)
-    anime({
-      targets: el,
-      translateY: 0,
-      scale: 1,
-      duration: 260,
-      easing: 'easeOutQuad',
-    })
-  }
+  const featured = hasEvents ? apiEvents[0] : null;
+  const upcomingQuests = hasEvents ? apiEvents.slice(1) : [];
+
+  const s = {
+    page: { background: COLORS.bg, paddingBottom: 0 },
+
+    hero: { paddingBlock: "48px 24px" },
+    heroDecor: {
+      width: 14,
+      height: 14,
+      background: COLORS.purple,
+      border: `2px solid ${COLORS.black}`,
+      marginBottom: "16px",
+    },
+    heroTitle: {
+      fontFamily: FONTS.heading,
+      fontWeight: WEIGHT.black,
+      fontSize: isMobile
+        ? "clamp(32px, 9vw, 48px)"
+        : "clamp(40px, 5vw, 72px)",
+      textTransform: "uppercase",
+      letterSpacing: "0.02em",
+      color: COLORS.black,
+      marginBottom: "12px",
+      lineHeight: 1.05,
+    },
+    heroTitleBox: {
+      display: "inline-block",
+      color: COLORS.orange,
+      border: `4px solid ${COLORS.orange}`,
+      padding: "0 0.2em",
+      lineHeight: 1.15,
+    },
+    heroSub: {
+      fontFamily: FONTS.mono,
+      fontSize: isMobile ? "14px" : "16px",
+      color: COLORS.muted,
+      lineHeight: 1.8,
+      maxWidth: "520px",
+      marginBottom: "20px",
+    },
+    heroRule: {
+      height: 0,
+      borderTop: "2px dashed rgba(0,0,0,0.15)",
+      marginTop: "8px",
+    },
+
+    raidSection: { paddingBlock: "32px 40px" },
+    raidHeader: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      flexWrap: "wrap",
+      gap: "12px",
+      marginBottom: "20px",
+    },
+    raidLabel: {
+      fontFamily: FONTS.heading,
+      fontWeight: WEIGHT.bold,
+      fontSize: "14px",
+      textTransform: "uppercase",
+      letterSpacing: "0.08em",
+      color: COLORS.black,
+      display: "flex",
+      alignItems: "center",
+      gap: "8px",
+    },
+    raidPill: {
+      fontFamily: FONTS.mono,
+      fontSize: "11px",
+      fontWeight: WEIGHT.bold,
+      letterSpacing: "0.1em",
+      textTransform: "uppercase",
+      background: COLORS.purple,
+      color: COLORS.white,
+      padding: "4px 12px",
+      border: `2px solid ${COLORS.black}`,
+    },
+    raidCard: {
+      border: `3px solid ${COLORS.black}`,
+      boxShadow: SHADOW.card,
+      background: COLORS.white,
+      display: "grid",
+      gridTemplateColumns: isMobile ? "1fr" : "auto 1fr",
+      overflow: "hidden",
+    },
+    raidVisual: {
+      background: "#1A1A2E",
+      padding: "24px",
+      display: "flex",
+      flexDirection: "column",
+      gap: "12px",
+      alignItems: "flex-start",
+      borderRight: isMobile ? "none" : `3px solid ${COLORS.black}`,
+      borderBottom: isMobile ? `3px solid ${COLORS.black}` : "none",
+    },
+    dateBadge: {
+      fontFamily: FONTS.mono,
+      fontSize: "12px",
+      fontWeight: WEIGHT.bold,
+      letterSpacing: "0.1em",
+      background: COLORS.orange,
+      color: COLORS.white,
+      padding: "4px 10px",
+      border: `2px solid ${COLORS.black}`,
+    },
+    raidMain: { padding: isMobile ? "20px" : "28px" },
+    raidTitle: {
+      fontFamily: FONTS.heading,
+      fontWeight: WEIGHT.black,
+      fontSize: isMobile ? "18px" : "clamp(1.4rem, 3.5vw, 2rem)",
+      textTransform: "uppercase",
+      color: COLORS.black,
+      marginBottom: "12px",
+    },
+    raidMeta: {
+      display: "flex",
+      gap: "20px",
+      flexWrap: "wrap",
+      marginBottom: "16px",
+    },
+    raidMetaItem: {
+      display: "flex",
+      alignItems: "center",
+      gap: "6px",
+      fontFamily: FONTS.mono,
+      fontSize: "12px",
+      color: COLORS.orange,
+      fontWeight: WEIGHT.bold,
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+    },
+    raidDesc: {
+      fontFamily: FONTS.mono,
+      fontSize: isMobile ? "14px" : "13px",
+      color: COLORS.muted,
+      lineHeight: 1.75,
+      marginBottom: "20px",
+      maxWidth: "520px",
+    },
+    raidActions: {
+      display: "flex",
+      alignItems: "center",
+      gap: "16px",
+      flexWrap: "wrap",
+    },
+    raidCta: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "8px",
+      fontFamily: FONTS.heading,
+      fontWeight: WEIGHT.black,
+      fontSize: "13px",
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      background: "#ED1C40",
+      color: COLORS.white,
+      padding: "11px 22px",
+      border: `2px solid ${COLORS.black}`,
+      boxShadow: SHADOW.card,
+      textDecoration: "none",
+      transition: "transform 0.15s, box-shadow 0.15s",
+      cursor: "pointer",
+    },
+
+    protocolSection: {
+      background: "#F0EFE9",
+      paddingBlock: "56px",
+      backgroundImage: "none",
+    },
+    protocolTitle: {
+      fontFamily: FONTS.heading,
+      fontWeight: WEIGHT.black,
+      fontSize: isMobile
+        ? "clamp(24px, 7vw, 36px)"
+        : "clamp(28px, 3vw, 48px)",
+      textTransform: "uppercase",
+      color: COLORS.black,
+      textAlign: "center",
+      marginBottom: "12px",
+    },
+    protocolSub: {
+      fontFamily: FONTS.mono,
+      fontSize: isMobile ? "14px" : "13px",
+      color: COLORS.muted,
+      textAlign: "center",
+      lineHeight: 1.8,
+      maxWidth: "520px",
+      margin: "0 auto 36px",
+    },
+    protocolGrid: {
+      display: "grid",
+      gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
+      border: `3px solid ${COLORS.black}`,
+      boxShadow: SHADOW.card,
+    },
+    stepCard: (last) => ({
+      background: COLORS.white,
+      padding: "24px",
+      borderRight: last ? "none" : `3px solid ${COLORS.black}`,
+      display: "flex",
+      flexDirection: "column",
+      gap: "12px",
+      position: "relative",
+    }),
+    stepBadge: (color) => ({
+      display: "inline-block",
+      fontFamily: FONTS.mono,
+      fontSize: "10px",
+      fontWeight: WEIGHT.bold,
+      letterSpacing: "0.1em",
+      textTransform: "uppercase",
+      background: color,
+      color: COLORS.white,
+      padding: "3px 8px",
+    }),
+    stepTitle: {
+      fontFamily: FONTS.heading,
+      fontWeight: WEIGHT.black,
+      fontSize: "15px",
+      textTransform: "uppercase",
+      color: COLORS.black,
+    },
+    stepDesc: {
+      fontFamily: FONTS.mono,
+      fontSize: isMobile ? "14px" : "12px",
+      color: COLORS.muted,
+      lineHeight: 1.7,
+    },
+
+    upcomingSection: { paddingBlock: "48px" },
+    sectionHeader: {
+      display: "flex",
+      alignItems: "center",
+      gap: "16px",
+      marginBottom: "28px",
+    },
+    sectionTitle: {
+      fontFamily: FONTS.heading,
+      fontWeight: WEIGHT.black,
+      fontSize: isMobile ? "22px" : "clamp(1.4rem, 3.5vw, 2rem)",
+      textTransform: "uppercase",
+      color: COLORS.black,
+    },
+    sectionRule: { flex: 1, height: "2px", background: "#CCCCCC" },
+    questGrid: {
+      display: "grid",
+      gridTemplateColumns: isMobile
+        ? "1fr"
+        : isTablet
+        ? "repeat(2, 1fr)"
+        : "repeat(3, 1fr)",
+      border: `3px solid ${COLORS.black}`,
+      boxShadow: SHADOW.card,
+    },
+    questCard: (last) => ({
+      background: COLORS.white,
+      borderRight: isMobile || isTablet ? "none" : last ? "none" : `3px solid ${COLORS.black}`,
+      borderBottom: (isMobile || isTablet) ? `3px solid ${COLORS.black}` : "none",
+      display: "flex",
+      flexDirection: "column",
+      overflow: "hidden",
+    }),
+    questThumb: (color) => ({
+      background: color,
+      padding: "20px",
+      display: "flex",
+      alignItems: "flex-end",
+      justifyContent: "space-between",
+      borderBottom: `3px solid ${COLORS.black}`,
+      minHeight: "90px",
+    }),
+    typeBadge: {
+      fontFamily: FONTS.mono,
+      fontSize: "10px",
+      fontWeight: WEIGHT.bold,
+      letterSpacing: "0.1em",
+      textTransform: "uppercase",
+      background: COLORS.white,
+      color: COLORS.black,
+      padding: "3px 8px",
+      border: `2px solid ${COLORS.black}`,
+    },
+    dateBadgeSm: {
+      fontFamily: FONTS.heading,
+      fontWeight: WEIGHT.black,
+      fontSize: "22px",
+      color: "rgba(255,255,255,0.5)",
+    },
+    questBody: {
+      padding: "20px",
+      display: "flex",
+      flexDirection: "column",
+      gap: "8px",
+      flex: 1,
+    },
+    questName: {
+      fontFamily: FONTS.heading,
+      fontWeight: WEIGHT.black,
+      fontSize: isMobile ? "18px" : "15px",
+      textTransform: "uppercase",
+      color: COLORS.black,
+    },
+    questDesc: {
+      fontFamily: FONTS.mono,
+      fontSize: isMobile ? "14px" : "12px",
+      color: COLORS.muted,
+      lineHeight: 1.7,
+      flex: 1,
+    },
+    questActions: {
+      display: "flex",
+      gap: "8px",
+      marginTop: "8px",
+      flexWrap: "wrap",
+    },
+    btnRsvp: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "6px",
+      fontFamily: FONTS.mono,
+      fontSize: "11px",
+      fontWeight: WEIGHT.bold,
+      letterSpacing: "0.08em",
+      textTransform: "uppercase",
+      color: COLORS.white,
+      background: "#ED1C40",
+      border: `2px solid ${COLORS.black}`,
+      padding: "6px 12px",
+      textDecoration: "none",
+      cursor: "pointer",
+    },
+    rsvpSoon: {
+      fontFamily: FONTS.mono,
+      fontSize: "11px",
+      color: "#AAAAAA",
+      textTransform: "uppercase",
+      letterSpacing: "0.08em",
+      border: "2px dashed #CCCCCC",
+      padding: "6px 12px",
+    },
+    ghostThumb: {
+      background: "#F0EFE9",
+      padding: "20px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      borderBottom: `3px solid ${COLORS.black}`,
+      minHeight: "90px",
+    },
+
+    skeletonCard: {
+      background: COLORS.skeleton,
+      border: `2px solid ${COLORS.black}`,
+      height: "280px",
+    },
+    skeletonGrid: {
+      display: "grid",
+      gridTemplateColumns: isMobile
+        ? "1fr"
+        : isTablet
+        ? "repeat(2, 1fr)"
+        : "repeat(3, 1fr)",
+      gap: "0",
+      border: `3px solid ${COLORS.black}`,
+      boxShadow: SHADOW.card,
+    },
+
+    emptyCard: {
+      border: `3px solid ${COLORS.black}`,
+      boxShadow: SHADOW.card,
+      background: COLORS.white,
+      padding: "48px 32px",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: "16px",
+      textAlign: "center",
+    },
+    emptyTitle: {
+      fontFamily: FONTS.heading,
+      fontWeight: WEIGHT.black,
+      fontSize: isMobile ? "22px" : "clamp(1.4rem, 3.5vw, 2rem)",
+      textTransform: "uppercase",
+      color: COLORS.black,
+    },
+    emptySub: {
+      fontFamily: FONTS.mono,
+      fontSize: isMobile ? "14px" : "12px",
+      fontWeight: WEIGHT.bold,
+      textTransform: "uppercase",
+      letterSpacing: "0.1em",
+      color: COLORS.muted,
+    },
+    emptyDesc: {
+      fontFamily: FONTS.mono,
+      fontSize: isMobile ? "14px" : "13px",
+      color: COLORS.muted,
+      lineHeight: 1.75,
+      maxWidth: "420px",
+    },
+    emptyBtns: {
+      display: "flex",
+      gap: "12px",
+      flexWrap: "wrap",
+      justifyContent: "center",
+      marginTop: "8px",
+    },
+    emptyBtn: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "8px",
+      fontFamily: FONTS.heading,
+      fontWeight: WEIGHT.bold,
+      fontSize: "13px",
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      background: "#E1306C",
+      color: COLORS.white,
+      padding: "11px 20px",
+      border: `2px solid ${COLORS.black}`,
+      boxShadow: SHADOW.card,
+      textDecoration: "none",
+    },
+    emptyBtnOut: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "8px",
+      fontFamily: FONTS.heading,
+      fontWeight: WEIGHT.bold,
+      fontSize: "13px",
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      background: "#25D366",
+      color: COLORS.white,
+      padding: "11px 20px",
+      border: `2px solid ${COLORS.black}`,
+      textDecoration: "none",
+    },
+
+    socialStrip: {
+      background: COLORS.bgDark,
+      paddingBlock: "64px",
+      backgroundImage: "none",
+    },
+    socialInner: { ...C, textAlign: "center" },
+    socialIconWrap: {
+      display: "flex",
+      justifyContent: "center",
+      marginBottom: "16px",
+    },
+    socialTitle: {
+      fontFamily: FONTS.heading,
+      fontWeight: WEIGHT.black,
+      fontSize: isMobile ? "clamp(24px, 7vw, 36px)" : "clamp(28px, 3vw, 48px)",
+      textTransform: "uppercase",
+      color: COLORS.white,
+      marginBottom: "12px",
+    },
+    socialSub: {
+      fontFamily: FONTS.mono,
+      fontSize: isMobile ? "14px" : "13px",
+      color: "rgba(255,255,255,0.6)",
+      lineHeight: 1.75,
+      maxWidth: "460px",
+      margin: "0 auto 28px",
+    },
+    socialBtns: {
+      display: "flex",
+      justifyContent: "center",
+      gap: "16px",
+      flexWrap: "wrap",
+      flexDirection: isMobile ? "column" : "row",
+      alignItems: "center",
+    },
+    socialBtn: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "10px",
+      fontFamily: FONTS.heading,
+      fontWeight: WEIGHT.bold,
+      fontSize: "13px",
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      background: "#E1306C",
+      color: COLORS.white,
+      padding: "12px 22px",
+      border: `2px solid ${COLORS.black}`,
+      boxShadow: SHADOW.card,
+      textDecoration: "none",
+      transition: "transform 0.15s",
+      width: isMobile ? "100%" : "auto",
+      justifyContent: isMobile ? "center" : "flex-start",
+      boxSizing: "border-box",
+    },
+    socialBtnWa: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "10px",
+      fontFamily: FONTS.heading,
+      fontWeight: WEIGHT.bold,
+      fontSize: "13px",
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      background: "#25D366",
+      color: COLORS.white,
+      padding: "12px 22px",
+      border: `2px solid ${COLORS.black}`,
+      boxShadow: SHADOW.card,
+      textDecoration: "none",
+      transition: "transform 0.15s",
+      width: isMobile ? "100%" : "auto",
+      justifyContent: isMobile ? "center" : "flex-start",
+      boxSizing: "border-box",
+    },
+    socialBtnMeetup: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "10px",
+      fontFamily: FONTS.heading,
+      fontWeight: WEIGHT.bold,
+      fontSize: "13px",
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      background: "#ED1C40",
+      color: COLORS.white,
+      padding: "12px 22px",
+      border: `2px solid ${COLORS.black}`,
+      boxShadow: SHADOW.card,
+      textDecoration: "none",
+      transition: "transform 0.15s",
+      width: isMobile ? "100%" : "auto",
+      justifyContent: isMobile ? "center" : "flex-start",
+      boxSizing: "border-box",
+    },
+  };
 
   return (
-    <div className={styles.page}>
-      <header className={`container ${styles.hero}`}>
-        <div className={styles.heroTop} data-anim="hero">
-          <h1 className={styles.heroTitle}>
-            ACTIVE <span className={styles.heroTitleAccent}>QUESTS</span>
+    <div style={s.page}>
+      {/* ── HERO ── */}
+      <header style={{ ...C, ...s.hero }}>
+        <div style={s.heroDecor} data-ev="hero" aria-hidden />
+        <div data-ev="hero">
+          <h1 style={s.heroTitle}>
+            ACTIVE <span style={s.heroTitleBox}>QUESTS</span>
           </h1>
-          <p className={styles.heroSub}>
-            Scan our upcoming drops, hackathons, and guest speaker sessions. Build, learn, and level up
-            your skills with real hands-on experience.
-          </p>
         </div>
-
-        <div className={styles.rule} aria-hidden="true" data-anim="hero" />
-        <p className={styles.note} data-anim="hero">
-          <span className={styles.noteDot} aria-hidden="true" />
-          <strong>Note:</strong> Registration happens on{' '}
-          <a href={MEETUP_LINK} target="_blank" rel="noreferrer" className={styles.inlineLink}>
-            Meetup.com
-          </a>
+        <p style={s.heroSub} data-ev="hero">
+          What's live rn workshops. buildathons. community meetups. find your
+          next event, lock in your spot, and stack those AWS skills no cap..
         </p>
+        <div style={s.heroRule} data-ev="hero" aria-hidden />
       </header>
 
-      <section className={`container ${styles.raidSection}`} aria-label="Next available raid" data-anim="raid">
-        <div className={styles.raidHeader}>
-          <h2 className={styles.raidLabel}>{NEXT_RAID.label}</h2>
-          <span className={styles.raidPill}>{NEXT_RAID.meta.type}</span>
+      {/* ── FEATURED / LOADING / EMPTY RAID ── */}
+      <section style={{ ...C, ...s.raidSection }} data-ev="raid">
+        <div style={s.raidHeader}>
+          <h2 style={s.raidLabel}>
+            <img
+              src="https://img.icons8.com/fluency/48/star.png"
+              width={16}
+              height={16}
+              alt=""
+              style={{ display: "block" }}
+            />
+            NEXT AVAILABLE RAID
+          </h2>
+          <span style={s.raidPill}>LEVEL 1 - BEGINNER FRIENDLY</span>
         </div>
 
-        <article className={styles.raidCard}>
-          <div className={styles.raidVisual} aria-hidden="true">
-            <div className={styles.dateBadge}>{NEXT_RAID.dateBadge}</div>
-            <div className={styles.serverRack}>
-              <div className={styles.rackTop}>
-                <span className={styles.rackText}>SERVER PRIME — 80%</span>
-              </div>
-              <div className={styles.rackBody}>
-                <div className={styles.rackRow} />
-                <div className={styles.rackRow} />
-                <div className={styles.rackRow} />
-                <div className={styles.rackRow} />
-                <div className={styles.rackRow} />
-              </div>
-            </div>
+        {loading && (
+          <div style={s.skeletonGrid}>
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="skeleton-card"
+                style={{
+                  ...s.skeletonCard,
+                  borderRight: i < 2 && !isMobile ? `2px solid ${COLORS.black}` : "none",
+                }}
+              />
+            ))}
           </div>
+        )}
 
-          <div className={styles.raidMain}>
-            <h3 className={styles.raidTitle}>{NEXT_RAID.title}</h3>
-            <p className={styles.raidDesc}>{NEXT_RAID.description}</p>
-
-            <ul className={styles.raidFacts}>
-              <li>
-                <span className={styles.factIcon} aria-hidden="true">⏱</span>
-                <span>{NEXT_RAID.meta.dateTime}</span>
-              </li>
-              <li>
-                <span className={styles.factIcon} aria-hidden="true">📍</span>
-                <span>{NEXT_RAID.meta.venue}</span>
-              </li>
-            </ul>
-
-            <ul className={styles.raidBullets}>
-              {NEXT_RAID.bullets.map((b) => (
-                <li key={b}>
-                  <span className={styles.bulletDot} aria-hidden="true" />
-                  <span>{b}</span>
-                </li>
-              ))}
-            </ul>
-
-            <div className={styles.raidActions}>
-              <a
-                href={NEXT_RAID.registerUrl}
-                target="_blank"
-                rel="noreferrer"
-                className={styles.raidCta}
-              >
-                SIGN UP ON MEETUP
+        {isEmpty && (
+          <div style={s.emptyCard}>
+            <RadarIcon />
+            <h3 style={s.emptyTitle}>NO ACTIVE RAIDS</h3>
+            <p style={s.emptySub}>SIGNAL LOST</p>
+            <p style={s.emptyDesc}>
+              We're planning the next event. Follow our channels to get the drop
+              the moment it goes live.
+            </p>
+            <div style={s.emptyBtns}>
+              <a href={INSTAGRAM_LINK} target="_blank" rel="noreferrer" style={s.emptyBtn}>
+                <img src="https://img.icons8.com/fluency/48/instagram-new.png" width={18} height={18} alt="" style={{ display: "block" }} />
+                INSTAGRAM
               </a>
-              <p className={styles.raidNote}>Registration happens on Meetup.com</p>
+              <a href={WHATSAPP_LINK} target="_blank" rel="noreferrer" style={s.emptyBtnOut}>
+                <img src="https://img.icons8.com/fluency/48/whatsapp.png" width={18} height={18} alt="" style={{ display: "block" }} />
+                WHATSAPP
+              </a>
             </div>
           </div>
-        </article>
+        )}
+
+        {hasEvents && featured && (
+          <article style={s.raidCard}>
+            <div style={s.raidVisual}>
+              <span style={s.dateBadge}>{formatDate(featured.local_date)}</span>
+              <ServerRackIllustration />
+            </div>
+            <div style={s.raidMain}>
+              <h3 style={s.raidTitle}>{featured.name}</h3>
+              <div style={s.raidMeta}>
+                <span style={s.raidMetaItem}>
+                  <img
+                    src="https://img.icons8.com/fluency/48/clock.png"
+                    width={14}
+                    height={14}
+                    alt=""
+                    style={{ display: "block" }}
+                  />
+                  {featured.local_time || "TIME TBA"}
+                </span>
+                <span style={s.raidMetaItem}>
+                  <img
+                    src="https://img.icons8.com/fluency/48/marker.png"
+                    width={14}
+                    height={14}
+                    alt=""
+                    style={{ display: "block" }}
+                  />
+                  {featured.venue?.name || "ONLINE"}
+                </span>
+              </div>
+              <p style={s.raidDesc}>{truncate(featured.description, 120)}</p>
+              <div style={s.raidActions}>
+                <a
+                  href={featured.link}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={s.raidCta}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translate(-2px,-2px)";
+                    e.currentTarget.style.boxShadow = "6px 6px 0 #111";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "";
+                    e.currentTarget.style.boxShadow = SHADOW.card;
+                  }}
+                >
+                  <img src={MEETUP_ICON} width={16} height={16} alt="" style={{ display: "block" }} />
+                  RSVP ON MEETUP
+                </a>
+                {featured.yes_rsvp_count > 0 && (
+                  <span
+                    style={{
+                      fontFamily: FONTS.mono,
+                      fontSize: "12px",
+                      fontWeight: WEIGHT.bold,
+                      color: COLORS.muted,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.06em",
+                    }}
+                  >
+                    {featured.yes_rsvp_count} GOING
+                  </span>
+                )}
+              </div>
+            </div>
+          </article>
+        )}
       </section>
 
-      <section className={styles.protocolSection} aria-label="Quest registration protocol">
-        <div className={`container ${styles.protocolInner}`}>
-          <header className={styles.protocolHeader}>
-            <h2 className={styles.protocolTitle}>QUEST REGISTRATION PROTOCOL</h2>
-            <p className={styles.protocolSub}>
-              We announce drops on Instagram and WhatsApp. To secure your spot, register on Meetup.
-            </p>
-          </header>
-
-          <div className={styles.protocolGrid}>
-            {REG_PROTOCOL.map((s) => (
-              <article key={s.badge} className={styles.protocolStep} data-anim="protocol-step">
-                <div className={styles.stepBadge}>{s.badge}</div>
-                <h3 className={styles.stepTitle}>{s.step}</h3>
-                <p className={styles.stepDesc}>{s.desc}</p>
+      {/* ── QUEST REGISTRATION PROTOCOL ── */}
+      <section style={s.protocolSection}>
+        <div style={C}>
+          <h2 style={s.protocolTitle} data-ev="hero">
+            QUEST REGISTRATION PROTOCOL
+          </h2>
+          <p style={s.protocolSub} data-ev="hero">
+            We use Instagram and WhatsApp to announce drops. We use{" "}
+            <a href={MEETUP_GROUP_URL} target="_blank" rel="noreferrer"
+              style={{ color: COLORS.orange, textDecoration: "underline", fontWeight: WEIGHT.bold }}>
+              Meetup
+            </a>{" "}
+            to secure your slot. No RSVP = No Entry.
+          </p>
+          <div style={s.protocolGrid}>
+            {REG_PROTOCOL.map((step, i) => (
+              <article
+                key={step.step}
+                data-ev="step"
+                style={s.stepCard(i === REG_PROTOCOL.length - 1)}
+              >
+                <span style={s.stepBadge(step.color)}>{step.badge}</span>
+                <img
+                  src={step.icon}
+                  width={28}
+                  height={28}
+                  alt={step.step}
+                  style={{ display: "block" }}
+                />
+                <h3 style={s.stepTitle}>{step.step}</h3>
+                <p style={s.stepDesc}>{renderDesc(step.desc)}</p>
               </article>
             ))}
           </div>
         </div>
       </section>
 
-      <section className={`container ${styles.section}`} aria-label="Upcoming events">
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>UPCOMING QUESTS</h2>
-          <div className={styles.sectionRule} aria-hidden="true" />
+      {/* ── UPCOMING QUESTS ── */}
+      <section style={{ ...C, ...s.upcomingSection }}>
+        <div style={s.sectionHeader}>
+          <h2 style={s.sectionTitle}>UPCOMING QUESTS</h2>
+          <div style={s.sectionRule} />
         </div>
 
-        {UPCOMING_EVENTS.length === 0 ? (
-          <div className={styles.empty} data-anim="empty">
-            <div className={styles.emptyBox}>
-              <h3 className={styles.emptyTitle}>No upcoming events yet.</h3>
-              <p className={styles.emptySub}>
-                Follow us to be the first to catch the next drop.
-              </p>
-              <div className={styles.emptyLinks}>
-                <a
-                  href={INSTAGRAM_LINK}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={styles.emptyLink}
-                >
-                  Instagram →
-                </a>
-                <a
-                  href={WHATSAPP_LINK}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={styles.emptyLink}
-                >
-                  WhatsApp →
-                </a>
-              </div>
-            </div>
+        {loading && (
+          <div style={s.skeletonGrid}>
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="skeleton-card"
+                style={{
+                  ...s.skeletonCard,
+                  borderRight: i < 2 && !isMobile ? `2px solid ${COLORS.black}` : "none",
+                }}
+              />
+            ))}
           </div>
-        ) : (
-          <div className={styles.upcomingGrid}>
-            {UPCOMING_EVENTS.map((ev) => (
-              <article
-                key={ev.name}
-                className={`${styles.questCard} ${styles[`tone__${ev.tone}`]}`}
-                data-anim="upcoming-card"
-              >
-                <div className={styles.questMedia} aria-hidden="true">
-                  <div className={styles.questMediaInner}>
-                    <span className={styles.questGlyph}>⚔</span>
-                    <span className={styles.questMediaLabel}>{ev.type}</span>
+        )}
+
+        {!loading && (
+          <div style={s.questGrid}>
+            {upcomingQuests.map((ev, i) => {
+              const isLast = i === upcomingQuests.length - 1;
+              return (
+                <article key={ev.name || i} data-ev="card" style={s.questCard(isLast)}>
+                  <div style={s.questThumb(COLORS.purple)}>
+                    <span style={s.typeBadge}>EVENT</span>
+                    <span style={s.dateBadgeSm}>{formatDate(ev.local_date)}</span>
+                  </div>
+                  <div style={s.questBody}>
+                    <h3 style={s.questName}>{ev.name}</h3>
+                    <p style={s.questDesc}>{truncate(ev.description, 100)}</p>
+                    <div style={s.questActions}>
+                      <a
+                        href={ev.link}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={s.btnRsvp}
+                      >
+                        <img src={MEETUP_ICON} width={14} height={14} alt="" style={{ display: "block" }} />
+                        RSVP
+                      </a>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+
+            {isEmpty && [0, 1, 2].map((i) => (
+              <article key={i} data-ev="card" style={{
+                background: COLORS.bg,
+                border: `3px dashed #CCCCCC`,
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+                borderRight: i < 2 && !isMobile ? `3px dashed #CCCCCC` : "none",
+              }}>
+                <div style={s.ghostThumb}>
+                  <CalendarIcon />
+                </div>
+                <div style={s.questBody}>
+                  <h3 style={{ ...s.questName }}>COMING SOON</h3>
+                  <p style={s.questDesc}>Quest loading...</p>
+                  <div style={s.questActions}>
+                    <span style={s.rsvpSoon}>RSVP OPENS SOON</span>
                   </div>
                 </div>
-
-                <div className={styles.questBody}>
-                  <h3 className={styles.cardTitle}>{ev.name}</h3>
-                  <p className={styles.cardDesc}>{ev.description}</p>
-
-                  <p className={styles.questMeta}>
-                    <span>⏱ {ev.dateTime}</span>
-                    <span>📍 {ev.venue}</span>
-                  </p>
-
-                  <a
-                    href={ev.registerUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={styles.registerBtn}
-                  >
-                    REGISTER
-                  </a>
-                </div>
               </article>
             ))}
 
-            <article
-              className={`${styles.questCard} ${styles.tone__ghost}`}
-              aria-label="More loading"
-              data-anim="upcoming-card"
-            >
-              <div className={styles.moreLoading}>
-                <div className={styles.moreBox} aria-hidden="true">
-                  <span className={styles.moreGlyph}>⌛</span>
+            {!isEmpty && upcomingQuests.length === 0 && (
+              <article data-ev="card" style={{
+                ...s.questCard(true),
+                background: COLORS.bg,
+                border: `3px dashed #CCCCCC`,
+              }}>
+                <div style={s.ghostThumb}>
+                  <CalendarIcon />
                 </div>
-                <p className={styles.moreText}>MORE LOADING...</p>
-                <a
-                  href={MEETUP_LINK}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={styles.moreLink}
-                >
-                  View on Meetup →
-                </a>
-              </div>
-            </article>
+                <div style={s.questBody}>
+                  <h3 style={s.questName}>MORE EVENTS COMING</h3>
+                  <p style={s.questDesc}>
+                    Stay tuned for upcoming workshops and buildathons.
+                  </p>
+                  <div style={s.questActions}>
+                    <span style={s.rsvpSoon}>RSVP OPENS SOON</span>
+                  </div>
+                </div>
+              </article>
+            )}
           </div>
         )}
       </section>
 
-      <section className={`container ${styles.section}`} aria-label="Past events">
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>PAST EVENTS</h2>
-          <div className={styles.sectionRule} aria-hidden="true" />
-        </div>
-
-        <div className={styles.pastGrid}>
-          {PAST_EVENTS.map((ev) => (
-            <article
-              key={ev.name}
-              className={`${styles.pastCard} ${styles[`pastTone__${ev.tone}`]}`}
-              data-anim="past-card"
-            >
-              <div className={styles.pastTop}>
-                <span className={styles.pastPill}>{ev.type}</span>
-              </div>
-              <h3 className={styles.pastTitle}>{ev.name}</h3>
-              <p className={styles.pastMeta}>
-                <span>📍 {ev.venue}</span>
-                <span>⏱ {ev.dateTime}</span>
-              </p>
-              <a
-                href={ev.registerUrl}
-                target="_blank"
-                rel="noreferrer"
-                className={styles.pastLink}
-              >
-                View on Meetup →
-              </a>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className={styles.socialStrip} aria-label="Social links">
-        <div className={`container ${styles.socialInner}`} data-anim="social">
-          <div className={styles.socialCopy}>
-            <h2 className={styles.socialTitle}>
-              DON&apos;T MISS
-              <span className={styles.socialAccent}> A SINGLE</span>
-              <br />
-              <span className={styles.socialAccent}>DROP</span>
-            </h2>
-            <p className={styles.socialSub}>
-              Join our community. Follow us on Instagram and message us on WhatsApp to get notified the
-              second a new event goes live.
-            </p>
+      {/* ── NEVER MISS A DROP ── */}
+      <section style={s.socialStrip} data-ev="social">
+        <div style={s.socialInner}>
+          <div style={s.socialIconWrap}>
+            <img
+              src="https://img.icons8.com/fluency/48/cloud.png"
+              width={36}
+              height={36}
+              alt=""
+              style={{ display: "block" }}
+            />
           </div>
-
-          <div className={styles.socialBtns}>
+          <h2 style={s.socialTitle}>NEVER MISS A DROP</h2>
+          <p style={s.socialSub}>
+            Real talk — slots go fast. the move is to turn on notifs so u never
+            miss an event drop. follow us on insta or join the whatsapp group
+            and stay locked in
+          </p>
+          <div style={s.socialBtns}>
             <a
-              ref={socialIgRef}
+              ref={igBtnRef}
               href={INSTAGRAM_LINK}
               target="_blank"
               rel="noreferrer"
-              className={styles.socialBtn}
-              onMouseEnter={() => socialHoverIn(socialIgRef.current)}
-              onMouseLeave={() => socialHoverOut(socialIgRef.current)}
+              style={s.socialBtn}
+              onMouseEnter={() => hoverIn(igBtnRef)}
+              onMouseLeave={() => hoverOut(igBtnRef)}
             >
-              Instagram
+              <img src="https://img.icons8.com/fluency/48/instagram-new.png" width={20} height={20} alt="" style={{ display: "block" }} />
+              FOLLOW ON INSTAGRAM
             </a>
             <a
-              ref={socialWaRef}
+              ref={waBtnRef}
               href={WHATSAPP_LINK}
               target="_blank"
               rel="noreferrer"
-              className={styles.socialBtnAlt}
-              onMouseEnter={() => socialHoverIn(socialWaRef.current)}
-              onMouseLeave={() => socialHoverOut(socialWaRef.current)}
+              style={s.socialBtnWa}
+              onMouseEnter={() => hoverIn(waBtnRef)}
+              onMouseLeave={() => hoverOut(waBtnRef)}
             >
-              WhatsApp
+              <img src="https://img.icons8.com/fluency/48/whatsapp.png" width={20} height={20} alt="" style={{ display: "block" }} />
+              JOIN WHATSAPP
             </a>
             <a
-              ref={socialMeetupRef}
-              href={MEETUP_LINK}
+              ref={meetupBtnRef}
+              href={MEETUP_GROUP_URL}
               target="_blank"
               rel="noreferrer"
-              className={styles.socialBtnAlt2}
-              onMouseEnter={() => socialHoverIn(socialMeetupRef.current)}
-              onMouseLeave={() => socialHoverOut(socialMeetupRef.current)}
+              style={s.socialBtnMeetup}
+              onMouseEnter={() => hoverIn(meetupBtnRef)}
+              onMouseLeave={() => hoverOut(meetupBtnRef)}
             >
-              Meetup
+              <img src={MEETUP_ICON} width={20} height={20} alt="" style={{ display: "block" }} />
+              VIEW ON MEETUP
             </a>
           </div>
         </div>
       </section>
     </div>
-  )
+  );
 }
