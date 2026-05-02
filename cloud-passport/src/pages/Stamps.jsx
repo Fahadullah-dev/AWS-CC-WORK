@@ -46,7 +46,6 @@ export default function Stamps() {
           <img src={s.emoji || "/icons/speaker.svg"} style={{ width: '40px', height: '40px', objectFit: 'contain', marginBottom: '8px', filter: s.collected ? 'none' : 'grayscale(1) opacity(0.2)' }} alt="stamp" />
           <div style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', wordWrap: 'break-word' }}>{s.name}</div>
           
-          {/* CLEAR EARNED DATE FORMATTING */}
           {s.collected && (
             <div style={{ fontSize: '9px', color: '#666', marginTop: '8px', fontWeight: 'bold' }}>
               SCANNED ON:<br/><span style={{ color: 'black' }}>{s.earnedDate.toLocaleDateString()}</span>

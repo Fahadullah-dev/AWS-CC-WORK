@@ -7,6 +7,7 @@ import Checkin from './Checkin';
 import Stamps from './Stamps';
 import SkillTree from './SkillTree';
 import Community from './Community';
+import Admin from './Admin';
 
 export default function Dashboard({ user }) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -15,6 +16,10 @@ export default function Dashboard({ user }) {
 
   const userEmail = user?.signInDetails?.loginId || '';
   const isGroupLeader = ['34675845@student.murdoch.edu.au'].includes(userEmail);
+
+  if (isGroupLeader) {
+    return <Admin user={user} />;
+  }
 
   const pages = [
     { id: 'profile', label: 'IDENTITY', component: <Passport user={user} onTerminated={() => setIsTerminated(true)} />, color: '#9b68f6' },
@@ -50,11 +55,6 @@ export default function Dashboard({ user }) {
               {p.label}
             </button>
           ))}
-          {isGroupLeader && (
-            <button onClick={() => navigate('/admin')} style={{ padding: '8px 12px', border: '2px solid white', backgroundColor: 'black', color: '#00e87f', fontWeight: '900', boxShadow: '3px 3px 0px #00e87f', cursor: 'pointer', fontSize: '11px' }}>
-              COMMAND CENTER
-            </button>
-          )}
           <button onClick={async () => { await signOut(); window.location.reload(); }} style={{ padding: '8px 12px', border: '2px solid white', backgroundColor: '#ff57f6', color: 'white', fontWeight: '900', boxShadow: '3px 3px 0px white', cursor: 'pointer', fontSize: '11px' }}>
             LOGOUT
           </button>

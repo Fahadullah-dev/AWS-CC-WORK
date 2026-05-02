@@ -386,8 +386,8 @@ export default function Admin({ user }) {
 
                 {activeTab === 'MANUAL XP' && (
                   <div>
-                    <h3 style={{ marginTop: 0, fontWeight: '900', borderBottom: '4px solid black', paddingBottom: '10px', textTransform: 'uppercase' }}>[ MANUAL XP ]</h3>
-                    <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#666',marginTop: '20px' ,marginBottom: '20px' }}>Issue manual XP for quiz winners, special events, or bonus tasks.</p>
+                    <h3 style={{ marginTop: 0, fontWeight: '900', borderBottom: '4px solid black', paddingBottom: '10px', textTransform: 'uppercase' }}>[ MANUAL XP OVERRIDE ]</h3>
+                    <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#666', marginBottom: '20px' }}>Issue manual XP for quiz winners, special events, or bonus tasks.</p>
                     
                     <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
                       <input placeholder="SEARCH STUDENT NAME..." value={filters.full_name} onChange={e => handleFilterChange(e, 'full_name')} style={{ ...inputStyle, flex: 1, minWidth: '200px' }} />

@@ -58,14 +58,13 @@ export default function Community() {
 
   return (
     <div style={{ backgroundColor: 'white', padding: '20px', color: 'black', boxSizing: 'border-box' }}>
-      <h2 style={{ marginTop: 0, fontWeight: '900', fontSize: '20px', borderBottom: '4px solid black', paddingBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <h2 style={{ marginTop: 0, fontWeight: '900', fontSize: '18px', borderBottom: '4px solid black', paddingBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
         <img src="/icons/logo.svg" alt="Cloud" style={{ height: '24px', objectFit: 'contain' }} />
         [ NETWORK & SHOWCASE ]
       </h2>
 
       {myProfile && (
         <div style={{ marginBottom: '40px', backgroundColor: '#f9f9f9', padding: '15px', border: '3px dashed #ccc', boxSizing: 'border-box' }}>
-          {/* COLOR CHANGED TO BLACK */}
           <h3 style={{ margin: '0 0 15px 0', fontWeight: '900', fontSize: '13px', color: 'black' }}>&gt; EXPORT TO LINKEDIN</h3>
           
           <div style={{ width: '100%', overflowX: 'auto', paddingBottom: '10px' }}>
@@ -123,7 +122,6 @@ export default function Community() {
         </div>
       )}
 
-      {/* SEARCH BAR & TITLE ADJUSTED HERE */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '4px solid black', paddingBottom: '10px', marginBottom: '15px', flexWrap: 'nowrap', gap: '10px' }}>
         <h3 style={{ margin: 0, fontWeight: '900', fontSize: '14px', flexShrink: 0 }}>MURDOCH LEADERBOARD</h3>
         <div style={{ flex: 1, maxWidth: '200px', display: 'flex', justifyContent: 'flex-end' }}>

@@ -13,7 +13,7 @@ export default function Guide() {
 
       <h2 style={{ marginTop: 0, fontWeight: '900', fontSize: '18px', borderBottom: '4px solid black', paddingBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
         <img src="/icons/logo.svg" alt="Cloud" style={{ height: '24px', objectFit: 'contain' }} />
-        [ SYSTEM GUIDE ]
+        [ SYSTEM DIRECTIVES ]
       </h2>
 
       <div style={{ backgroundColor: '#fffbe6', border: '3px solid black', padding: '20px', marginBottom: '30px', boxShadow: '6px 6px 0px #ff9900', position: 'relative' }}>

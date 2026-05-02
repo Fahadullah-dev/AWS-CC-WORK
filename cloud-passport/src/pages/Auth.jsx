@@ -3,7 +3,6 @@ import { signIn, signUp, confirmSignUp, resendSignUpCode, resetPassword, confirm
 import { generateClient } from 'aws-amplify/api';
 import { createUser } from '../graphql/mutations';
 
-// FIXED: Standardized to short names to match the Passport UI perfectly
 const AVAILABLE_MAJORS = ['AI', 'CS', 'Cyber', 'BIS', 'Game Dev'];
 const AVATAR_PRESETS = [
   "/avatars/pfp1.jpg", "/avatars/pfp2.jpg", "/avatars/pfp3.jpg", "/avatars/pfp4.jpg", "/avatars/pfp5.jpg",

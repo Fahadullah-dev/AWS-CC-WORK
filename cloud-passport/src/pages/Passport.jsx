@@ -46,7 +46,6 @@ export default function Passport({ onTerminated }) {
       if (userRes.data.getUser) {
         let userData = userRes.data.getUser;
         
-        // AUTO-CONVERTER: Fixes old long names to short names so buttons highlight properly
         if (userData.major) {
           userData.major = userData.major.map(m => {
             if (m === 'Computer Science') return 'CS';
@@ -170,7 +169,6 @@ export default function Passport({ onTerminated }) {
   return (
     <div style={{ backgroundColor: '#fafafa', position: 'relative', color: 'black', border: '8px solid white', boxSizing: 'border-box' }}>
       
-      {/* CUSTOM INVALID POPUP */}
       {errorPopup && (
         <div style={overlayStyle} onClick={() => setErrorPopup(null)}>
           <div style={{...popupCardStyle, boxShadow: '12px 12px 0px #ef4444'}} onClick={e => e.stopPropagation()}>
@@ -183,7 +181,6 @@ export default function Passport({ onTerminated }) {
         </div>
       )}
 
-      {/* CUSTOM DELETE POPUP */}
       {showDeletePopup && (
         <div style={overlayStyle} onClick={() => setShowDeletePopup(false)}>
           <div style={popupCardStyle} onClick={e => e.stopPropagation()}>
@@ -265,7 +262,7 @@ export default function Passport({ onTerminated }) {
           <div style={{ backgroundColor: '#1a1c21', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', borderBottom: '4px solid #ff9900' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <img src="/icons/logo.svg" style={{ height: '20px', objectFit: 'contain' }} alt="Logo" />
-              <h2 style={{ color: 'white', margin: 0, fontSize: '20px', fontWeight: '900', letterSpacing: '1px', textTransform: 'uppercase' }}>OFFICIAL BUILDER ID</h2>
+              <h2 style={{ color: 'white', margin: 0, fontSize: '14px', fontWeight: '900', letterSpacing: '1px', textTransform: 'uppercase' }}>OFFICIAL BUILDER ID</h2>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button onClick={() => setIsEditing(true)} style={{...miniBtnStyle, backgroundColor: '#3ea1f3', border: '2px solid white'}}>EDIT PROFILE</button>
