@@ -3,7 +3,7 @@ import { generateClient } from 'aws-amplify/api';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { listEvents, listAttendances } from '../graphql/queries';
 
-const SKILL_ICONS = { Compute: '/icons/compute.png', Networking: '/icons/network.png', Security: '/icons/security.png', 'AI/ML': '/icons/ai.png', General: '/icons/logo.svg' };
+const SKILL_ICONS = { Compute: '/icons/compute.png', Networking: '/icons/network.png', Security: '/icons/security.png', 'AI/ML': '/icons/ai.png', General: '/icons/logo-Amber.svg' };
 
 export default function SkillTree({ tracksToShow }) {
   const [loading, setLoading] = useState(true);

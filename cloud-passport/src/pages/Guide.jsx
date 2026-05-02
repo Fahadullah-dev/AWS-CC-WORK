@@ -5,7 +5,7 @@ export default function Guide() {
     { name: 'EXPLORER', level: '1-20', xp: '0 - 20,000 XP', color: '#00e87f', icon: '/icons/explorer.svg' },
     { name: 'BUILDER', level: '21-40', xp: '21,000 - 40,000 XP', color: '#9b68f6', icon: '/icons/builder.svg' },
     { name: 'ARCHITECT', level: '41-80', xp: '41,000 - 80,000 XP', color: '#3ea1f3', icon: '/icons/architect.svg' },
-    { name: 'PIONEER', level: '81-100+', xp: '81,000+ XP', color: '#ff57f6', icon: '/icons/pioneer.svg' }
+    { name: 'MASTER', level: '81-100+', xp: '81,000+ XP', color: '#ff57f6', icon: '/icons/master.svg' }
   ];
 
   return (
@@ -13,7 +13,7 @@ export default function Guide() {
 
       <h2 style={{ marginTop: 0, fontWeight: '900', fontSize: '18px', borderBottom: '4px solid black', paddingBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
         <img src="/icons/logo.svg" alt="Cloud" style={{ height: '24px', objectFit: 'contain' }} />
-        [ SYSTEM DIRECTIVES ]
+        [ SYSTEM GUIDE ]
       </h2>
 
       <div style={{ backgroundColor: '#fffbe6', border: '3px solid black', padding: '20px', marginBottom: '30px', boxShadow: '6px 6px 0px #ff9900', position: 'relative' }}>

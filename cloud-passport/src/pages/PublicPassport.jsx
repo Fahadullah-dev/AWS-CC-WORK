@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { generateClient } from 'aws-amplify/api';
 import { listUsers, listAttendances, listEvents } from '../graphql/queries';
 
-const TIER_ICONS = { EXPLORER: '/icons/explorer.svg', BUILDER: '/icons/builder.svg', ARCHITECT: '/icons/architect.svg', PIONEER: '/icons/pioneer.svg' };
+const TIER_ICONS = { EXPLORER: '/icons/explorer.svg', BUILDER: '/icons/builder.svg', ARCHITECT: '/icons/architect.svg', MASTER: '/icons/master.svg' };
 
 export default function PublicPassport() {
   const { slug } = useParams(); 
@@ -33,7 +33,7 @@ export default function PublicPassport() {
 
   const currentTotalXp = profile?.xp || 0;
   const currentLevel = Math.floor(currentTotalXp / 1000) + 1;
-  let currentTier = "EXPLORER"; if (currentLevel >= 21) currentTier = "BUILDER"; if (currentLevel >= 41) currentTier = "ARCHITECT"; if (currentLevel >= 81) currentTier = "PIONEER";
+  let currentTier = "EXPLORER"; if (currentLevel >= 21) currentTier = "BUILDER"; if (currentLevel >= 41) currentTier = "ARCHITECT"; if (currentLevel >= 81) currentTier = "MASTER";
 
   return (
     <div style={containerStyle}>
