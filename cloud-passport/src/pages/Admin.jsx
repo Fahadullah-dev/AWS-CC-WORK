@@ -2,11 +2,31 @@ import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import { signOut } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/api';
-import { listEvents, listUsers, listAttendances } from '../graphql/queries'; 
-import { createEvent, deleteEvent, updateEvent, deleteUser as deleteDBUser, updateUser } from '../graphql/mutations';
+import { listEvents, listAttendances } from '../graphql/queries'; 
+import { createEvent, deleteEvent, updateEvent, deleteUser as deleteDBUser } from '../graphql/mutations';
 import Passport from './Passport';
 
 const CAPTAIN_EMAILS = ['34675845@student.murdoch.edu.au'];
+
+const CUSTOM_LIST_USERS = `
+  query ListUsers {
+    listUsers(limit: 1000) {
+      items {
+        id full_name email major intake member_id xp tier createdAt archives
+      }
+    }
+  }
+`;
+const CUSTOM_UPDATE_USER = `
+  mutation UpdateUser($input: UpdateUserInput!) {
+    updateUser(input: $input) { id archives }
+  }
+`;
+const RAW_DELETE_ATTENDANCE = `
+  mutation DeleteAttendance($input: DeleteAttendanceInput!) {
+    deleteAttendance(input: $input) { id }
+  }
+`;
 
 export default function Admin({ user }) {
   const [activeTab, setActiveTab] = useState('IDENTITY');
@@ -21,8 +41,8 @@ export default function Admin({ user }) {
   const [isEditing, setIsEditing] = useState(false);
   const [processing, setProcessing] = useState(false);
   
-  // Custom states for Manual XP
   const [pointsToAdd, setPointsToAdd] = useState(100);
+  const [resetTrimesterName, setResetTrimesterName] = useState('');
 
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [qrEvent, setQrEvent] = useState(null);
@@ -41,7 +61,7 @@ export default function Admin({ user }) {
       const client = generateClient();
       const [eventsRes, usersRes, attRes] = await Promise.all([
         client.graphql({ query: listEvents }),
-        client.graphql({ query: listUsers }),
+        client.graphql({ query: CUSTOM_LIST_USERS }),
         client.graphql({ query: listAttendances, variables: { limit: 10000 } })
       ]);
       setEvents(eventsRes.data.listEvents.items || []);
@@ -49,6 +69,70 @@ export default function Admin({ user }) {
       setAttendances(attRes.data.listAttendances.items || []);
     } catch (err) { console.error(err); }
     setLoading(false);
+  }
+
+  // --- FULL ARCHIVE & RESET ENGINE ---
+  async function handleResetAllXP() {
+    if(!resetTrimesterName) return alert("SYSTEM HALTED: Enter a Trimester Name (e.g. 'Jan 2026') to store the archive before resetting.");
+    if(!window.confirm(`⚠️ EXTREME DANGER: Did you download the CSV export first? This will archive all records as "${resetTrimesterName}" and WIPE all current XP and Stamps to 0.`)) return;
+    if(!window.confirm("🚨 CRITICAL OVERRIDE: Are you ABSOLUTELY sure? This cannot be undone.")) return;
+    
+    setProcessing(true);
+    try {
+      const client = generateClient();
+
+      // 1. Snapshot and Update Users
+      for (const u of users) {
+        const userAtts = attendances.filter(a => a.userID === u.id);
+        
+        let totalSkills = new Set();
+        const pastStamps = userAtts.map(a => {
+            const ev = events.find(e => e.id === a.eventID);
+            if(ev?.unlocked_skills) ev.unlocked_skills.forEach(s => totalSkills.add(s.trim()));
+            return { name: ev?.name || 'Unknown', emoji: ev?.emoji || '', date: a.createdAt };
+        });
+
+        const currentArchives = u.archives ? JSON.parse(u.archives) : [];
+        currentArchives.push({
+            trimester: resetTrimesterName,
+            xp: u.xp || 0,
+            tier: u.tier || 'EXPLORER',
+            eventsCount: userAtts.length,
+            skillsCount: totalSkills.size,
+            stamps: pastStamps
+        });
+
+        await client.graphql({
+            query: CUSTOM_UPDATE_USER,
+            variables: { 
+              input: { 
+                id: u.id, 
+                xp: 0, 
+                tier: "EXPLORER", 
+                archives: JSON.stringify(currentArchives) 
+              } 
+            }
+        });
+      }
+
+      // 2. Wipe all Attendances
+      for (const a of attendances) {
+        await client.graphql({ query: RAW_DELETE_ATTENDANCE, variables: { input: { id: a.id } } });
+      }
+
+      // 3. WIPE ALL EVENTS (This clears the Stamp Board for everyone!)
+      for (const e of events) {
+        await client.graphql({ query: deleteEvent, variables: { input: { id: e.id } } });
+      }
+
+      alert(`SUCCESS: System completely wiped. Trimester [${resetTrimesterName}] safely archived in the cloud.`);
+      setResetTrimesterName('');
+      await fetchData();
+    } catch (err) { 
+      alert("ERROR: System reset sequence failed mid-execution."); 
+      console.error(err); 
+    }
+    setProcessing(false);
   }
 
   const downloadCSV = () => {
@@ -131,11 +215,11 @@ export default function Admin({ user }) {
       const client = generateClient();
       const newXp = (targetUser.xp || 0) + parseInt(pointsToAdd);
       let newTier = "EXPLORER";
-      if (newXp >= 21000) newTier = "BUILDER";
-      if (newXp >= 41000) newTier = "ARCHITECT";
-      if (newXp >= 81000) newTier = "MASTER";
+      if (newXp >= 1200) newTier = "BUILDER";
+      if (newXp >= 2600) newTier = "ARCHITECT";
+      if (newXp >= 4000) newTier = "MASTER";
 
-      await client.graphql({ query: updateUser, variables: { input: { id: targetUser.id, xp: newXp, tier: newTier } } });
+      await client.graphql({ query: CUSTOM_UPDATE_USER, variables: { input: { id: targetUser.id, xp: newXp, tier: newTier } } });
       alert(`SUCCESS: Added ${pointsToAdd} XP to ${targetUser.full_name}`);
       await fetchData();
     } catch (err) { alert("OVERRIDE FAILED."); } finally { setProcessing(false); }
@@ -311,7 +395,17 @@ export default function Admin({ user }) {
 
                 {activeTab === 'ROSTER' && (
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '15px' }}>
+                    <div style={{ border: '4px solid #ef4444', backgroundColor: '#fff5f5', padding: '15px', marginBottom: '20px', display: 'flex', alignItems: 'flex-end', flexWrap: 'wrap', gap: '10px' }}>
+                      <div style={{ flex: 1, minWidth: '200px' }}>
+                        <label style={{ fontSize: '10px', fontWeight: '900', color: '#ef4444', marginBottom: '5px', display: 'block' }}>ARCHIVE TRIMESTER NAME (e.g., Jan 2026)</label>
+                        <input value={resetTrimesterName} onChange={e => setResetTrimesterName(e.target.value)} placeholder="Enter name to archive..." style={{ ...inputStyle, border: '3px solid #ef4444' }} />
+                      </div>
+                      <button onClick={handleResetAllXP} disabled={processing} style={{ ...protoBtn, backgroundColor: '#ef4444', color: 'white', padding: '12px 20px' }}>
+                        {processing ? 'PURGING...' : 'END OF TRIMESTER RESET'}
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginBottom: '15px', flexWrap: 'wrap' }}>
                       <button onClick={downloadCSV} style={{ ...protoBtn, backgroundColor: '#ff9900', color: 'black', padding: '10px' }}>
                         <img src="/icons/upload.png" style={{ width: '12px', transform: 'rotate(180deg)', marginRight: '8px' }} alt="Download" />
                         EXPORT CSV
@@ -361,21 +455,24 @@ export default function Admin({ user }) {
                 {activeTab === 'LEADERBOARD' && (
                   <div style={{ overflowX: 'auto' }}>
                     <table style={tableStyle}>
-                      <thead><tr style={{ backgroundColor: '#9b68f6', color: 'white' }}><th style={thStyle}>RANK</th><th style={thStyle}>BUILDER</th><th style={thStyle}>ACADEMIC YR</th><th style={thStyle}>TIER & LVL</th><th style={thStyle}>ATTENDANCE</th><th style={thStyle}>XP</th></tr></thead>
+                      <thead><tr style={{ backgroundColor: '#9b68f6', color: 'white' }}><th style={thStyle}>RANK</th><th style={thStyle}>ID</th><th style={thStyle}>BUILDER</th><th style={thStyle}>ACADEMIC YR</th><th style={thStyle}>TIER & LVL</th><th style={thStyle}>ATTENDANCE</th><th style={thStyle}>XP</th></tr></thead>
                       <tbody>
                         {sortedLeaderboard.map((u, i) => {
                           const userAtts = attendances.filter(a => a.userID === u.id).length;
-                          const level = Math.floor((u.xp || 0)/1000) + 1;
+                          const level = Math.floor((u.xp || 0)/200) + 1; 
+                          const userXp = u.xp || 0;
+
                           return (
                             <tr key={u.id}>
                               <td style={{ ...tdStyle, fontWeight: '900', textAlign: 'center' }}>
-                                {i === 0 ? <img src="/icons/first.png" alt="1st" style={{ width: '20px', verticalAlign: 'middle' }} /> :
-                                 i === 1 ? <img src="/icons/second.png" alt="2nd" style={{ width: '20px', verticalAlign: 'middle' }} /> :
-                                 i === 2 ? <img src="/icons/third.png" alt="3rd" style={{ width: '20px', verticalAlign: 'middle' }} /> : 
+                                {i === 0 && userXp > 0 ? <img src="/icons/first.png" alt="1st" style={{ width: '20px', verticalAlign: 'middle' }} /> :
+                                 i === 1 && userXp > 0 ? <img src="/icons/second.png" alt="2nd" style={{ width: '20px', verticalAlign: 'middle' }} /> :
+                                 i === 2 && userXp > 0 ? <img src="/icons/third.png" alt="3rd" style={{ width: '20px', verticalAlign: 'middle' }} /> : 
                                  `#${i + 1}`}
                               </td>
+                              <td style={tdStyle}>{u.member_id}</td>
                               <td style={tdStyle}><strong>{u.full_name}</strong></td><td style={tdStyle}>YR {u.year}</td><td style={tdStyle}>{u.tier?.toUpperCase()} • LVL {level}</td>
-                              <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 'bold' }}>{userAtts} Events</td><td style={{ ...tdStyle, fontWeight: '900', color: '#9b68f6' }}>{u.xp || 0} PT</td>
+                              <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 'bold' }}>{userAtts} Events</td><td style={{ ...tdStyle, fontWeight: '900', color: '#9b68f6' }}>{userXp} PT</td>
                             </tr>
                           );
                         })}
@@ -398,7 +495,9 @@ export default function Admin({ user }) {
                       {users.filter(u => u.full_name?.toLowerCase().includes(filters.full_name.toLowerCase())).map(u => (
                         <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', border: '3px solid black', backgroundColor: '#f9f9f9', flexWrap: 'wrap', gap: '10px' }}>
                           <div>
-                            <div style={{ fontWeight: '900', fontSize: '14px', textTransform: 'uppercase' }}>{u.full_name}</div>
+                            <div style={{ fontWeight: '900', fontSize: '14px', textTransform: 'uppercase' }}>
+                              {u.full_name} <span style={{ color: '#888', fontSize: '12px' }}>({u.member_id})</span>
+                            </div>
                             <div style={{ fontSize: '11px', color: '#666', fontWeight: 'bold', marginTop: '4px' }}>CURRENT: <span style={{color: '#9b68f6'}}>{u.xp || 0} XP</span> • {u.major?.join(' + ')}</div>
                           </div>
                           <button onClick={() => addXpManually(u)} disabled={processing} style={{ backgroundColor: '#ff9900', color: 'black', border: '3px solid black', fontWeight: '900', cursor: 'pointer', padding: '10px 20px', boxShadow: '4px 4px 0px black', fontSize: '11px' }}>

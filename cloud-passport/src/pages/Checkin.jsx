@@ -82,12 +82,12 @@ export default function Checkin({ user }) {
       const userProfileRes = await client.graphql({ query: getUser, variables: { id: userId } });
       const userProfile = userProfileRes.data.getUser;
       
+      // NEW BATTLE PASS MATH
       const newXp = (userProfile.xp || 0) + eventData.xp_reward;
-      
       let newTier = "EXPLORER";
-      if (newXp >= 21000) newTier = "BUILDER";
-      if (newXp >= 41000) newTier = "ARCHITECT";
-      if (newXp >= 81000) newTier = "MASTER";
+      if (newXp >= 1200) newTier = "BUILDER";
+      if (newXp >= 2600) newTier = "ARCHITECT";
+      if (newXp >= 4000) newTier = "MASTER";
 
       await Promise.all([
         client.graphql({ 

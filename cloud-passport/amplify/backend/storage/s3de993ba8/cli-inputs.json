@@ -1,0 +1,16 @@
+{
+  "resourceName": "s3de993ba8",
+  "policyUUID": "de993ba8",
+  "bucketName": "cloudpassport90daa0ef6d034ddbbaaa822a5a5c66ac",
+  "storageAccess": "authAndGuest",
+  "guestAccess": [
+    "READ"
+  ],
+  "authAccess": [
+    "CREATE_AND_UPDATE",
+    "READ",
+    "DELETE"
+  ],
+  "triggerFunction": "NONE",
+  "groupAccess": {}
+}

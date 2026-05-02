@@ -18,8 +18,8 @@ export default function Stamps() {
           client.graphql({ query: listAttendances, variables: { filter: { userID: { eq: userId } } } })
         ]);
         
-        const allEvents = eRes.data.listEvents.items;
-        const myAtts = aRes.data.listAttendances.items;
+        const allEvents = eRes.data.listEvents.items || [];
+        const myAtts = aRes.data.listAttendances.items || [];
 
         const merged = allEvents.map(event => {
           const att = myAtts.find(a => a.eventID === event.id);
@@ -28,7 +28,15 @@ export default function Stamps() {
             collected: !!att, 
             earnedDate: att ? new Date(att.createdAt) : null 
           };
-        }).sort((a, b) => (b.earnedDate || 0) - (a.earnedDate || 0));
+        });
+
+        // STRICT SORTING: Collected stamps first (newest to oldest), then uncollected stamps
+        merged.sort((a, b) => {
+          if (a.collected && b.collected) return b.earnedDate - a.earnedDate; 
+          if (a.collected) return -1;
+          if (b.collected) return 1;
+          return 0;
+        });
 
         setStamps(merged.filter(s => s.xp_reward < 500)); 
         setRareStamps(merged.filter(s => s.xp_reward >= 500)); 
@@ -39,16 +47,22 @@ export default function Stamps() {
 
   if (loading) return <div style={{ padding: '50px', textAlign: 'center', fontWeight: '900', color: 'black' }}>SYNCING REWARDS...</div>;
 
+  // FORMATS DATE EXACTLY AS: "3 MAY 26"
+  const formatDate = (date) => {
+    if (!date) return '';
+    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }).toUpperCase();
+  };
+
   const renderGrid = (items) => (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '15px' }}>
       {items.map(s => (
-        <div key={s.id} style={{ border: s.collected ? '3px solid black' : '2px dashed #ccc', padding: '15px 5px', textAlign: 'center', backgroundColor: s.collected ? 'white' : '#f9f9f9', position: 'relative' }}>
+        <div key={s.id} style={{ border: s.collected ? '3px solid black' : '2px dashed #ccc', padding: '15px 5px', textAlign: 'center', backgroundColor: s.collected ? 'white' : '#f9f9f9', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
           <img src={s.emoji || "/icons/speaker.svg"} style={{ width: '40px', height: '40px', objectFit: 'contain', marginBottom: '8px', filter: s.collected ? 'none' : 'grayscale(1) opacity(0.2)' }} alt="stamp" />
           <div style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', wordWrap: 'break-word' }}>{s.name}</div>
           
           {s.collected && (
-            <div style={{ fontSize: '9px', color: '#666', marginTop: '8px', fontWeight: 'bold' }}>
-              SCANNED ON:<br/><span style={{ color: 'black' }}>{s.earnedDate.toLocaleDateString()}</span>
+            <div style={{ fontSize: '9px', color: '#666', marginTop: '8px', fontWeight: 'bold', borderTop: '2px dotted #ccc', paddingTop: '6px', width: '100%' }}>
+              ACQUIRED:<br/><span style={{ color: 'black' }}>{formatDate(s.earnedDate)}</span>
             </div>
           )}
           

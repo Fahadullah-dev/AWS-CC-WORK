@@ -141,6 +141,13 @@ export default function Auth({ onAuthSuccess }) {
 
   return (
     <div style={containerStyle}>
+      <style>{`
+        @keyframes slideBg {
+          0% { background-position: 0 0; }
+          100% { background-position: 28px 0; }
+        }
+      `}</style>
+      
       {popup && (
         <div style={overlayStyle} onClick={() => setPopup(null)}>
           <div style={popupCardStyle} onClick={e => e.stopPropagation()}>
@@ -263,8 +270,20 @@ export default function Auth({ onAuthSuccess }) {
             {view === 'confirm' && (
             <form onSubmit={handleConfirm} style={formStyle}>
                 <label style={{...labelStyle, textAlign: 'center'}}>ENTER VERIFICATION CODE SENT TO EMAIL</label>
-                <input type="text" required value={code} onChange={e => setCode(e.target.value)} style={{ ...inputStyle, textAlign: 'center', fontSize: '28px', letterSpacing: '5px' }} />
-                <button type="submit" disabled={loading} style={primaryBtnStyle}>CONFIRM IDENTITY</button>
+                <input type="text" required value={code} onChange={e => setCode(e.target.value)} style={{ ...inputStyle, textAlign: 'center', fontSize: '28px', letterSpacing: '5px' }} disabled={loading} />
+                
+                {/* LOADING BAR FOR VERIFICATION */}
+                {loading && (
+                  <div style={{ width: '100%', border: '3px solid black', padding: '3px', boxSizing: 'border-box', backgroundColor: '#eee' }}>
+                    <div style={{ 
+                      width: '100%', height: '14px', backgroundColor: '#00e87f', 
+                      backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.2) 10px, rgba(0,0,0,0.2) 20px)', 
+                      animation: 'slideBg 1s linear infinite' 
+                    }}></div>
+                  </div>
+                )}
+
+                <button type="submit" disabled={loading} style={primaryBtnStyle}>{loading ? 'VERIFYING BIOMETRICS...' : 'CONFIRM IDENTITY'}</button>
                 <div style={{ textAlign: 'center', marginTop: '10px' }}><span onClick={handleResendCode} style={{ fontSize: '11px', fontWeight: '900', color: '#9b68f6', cursor: 'pointer', textDecoration: 'underline' }}>DIDN'T RECEIVE IT? RESEND CODE</span></div>
             </form>
             )}

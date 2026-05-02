@@ -45,16 +45,16 @@ export default function Community() {
   if (loading) return <div style={{ padding: '50px', textAlign: 'center', fontWeight: '900', color: 'black' }}>SYNCING NETWORK...</div>;
 
   const currentTotalXp = myProfile?.xp || 0;
-  const currentLevel = Math.floor(currentTotalXp / 1000) + 1;
+  const currentLevel = Math.floor(currentTotalXp / 200) + 1; // 12-Week Math
   const filteredUsers = users.filter(u => u.full_name?.toLowerCase().includes(searchQuery.toLowerCase()));
 
   const myRank = myProfile ? users.findIndex(u => u.id === myProfile.id) + 1 : '-';
   const totalUsers = users.length;
 
   let currentTier = "EXPLORER";
-  if (currentLevel >= 21) currentTier = "BUILDER";
-  if (currentLevel >= 41) currentTier = "ARCHITECT";
-  if (currentLevel >= 81) currentTier = "MASTER";
+  if (currentLevel >= 6) currentTier = "BUILDER";
+  if (currentLevel >= 13) currentTier = "ARCHITECT";
+  if (currentLevel >= 20) currentTier = "MASTER";
 
   return (
     <div style={{ backgroundColor: 'white', padding: '20px', color: 'black', boxSizing: 'border-box' }}>
@@ -136,16 +136,18 @@ export default function Community() {
           filteredUsers.map((u, i) => {
             let bgColor = 'white'; let rankColor = 'black'; 
             let icon = `#${i + 1}`;
+            const userXp = u.xp || 0;
             
-            if (searchQuery === '') {
+            // FIXED 0 XP BUG: Only show medals if they actually have points!
+            if (searchQuery === '' && userXp > 0) {
               if (i === 0) { bgColor = '#fffbe6'; rankColor = '#ff9900'; icon = <img src="/icons/first.png" alt="1st" style={{ width: '20px' }} />; }
               else if (i === 1) { bgColor = '#f8f9fa'; rankColor = '#94a3b8'; icon = <img src="/icons/second.png" alt="2nd" style={{ width: '20px' }} />; }
               else if (i === 2) { bgColor = '#fff5f0'; rankColor = '#b45309'; icon = <img src="/icons/third.png" alt="3rd" style={{ width: '20px' }} />; }
             }
 
             return (
-              <div key={u.id} style={{ display: 'flex', alignItems: 'center', padding: '10px', backgroundColor: bgColor, border: '2px solid black', boxShadow: i === 0 && searchQuery === '' ? '4px 4px 0px #3ea1f3' : '3px 3px 0px rgba(0,0,0,0.1)' }}>
-                <div style={{ width: '30px', fontWeight: '900', fontSize: i < 3 && searchQuery === '' ? '16px' : '12px', color: rankColor, textAlign: 'center' }}>
+              <div key={u.id} style={{ display: 'flex', alignItems: 'center', padding: '10px', backgroundColor: bgColor, border: '2px solid black', boxShadow: i === 0 && searchQuery === '' && userXp > 0 ? '4px 4px 0px #3ea1f3' : '3px 3px 0px rgba(0,0,0,0.1)' }}>
+                <div style={{ width: '30px', fontWeight: '900', fontSize: i < 3 && searchQuery === '' && userXp > 0 ? '16px' : '12px', color: rankColor, textAlign: 'center' }}>
                   {icon}
                 </div>
                 <img src={u.avatar_url || '/icons/speaker.svg'} style={{ width: '32px', height: '32px', border: '2px solid black', objectFit: 'cover', margin: '0 10px' }} alt="Avatar" />
@@ -154,7 +156,7 @@ export default function Community() {
                   <div style={{ fontSize: '9px', fontWeight: 'bold', color: '#666' }}>{u.major?.join(' + ')}</div>
                 </div>
                 <div style={{ fontWeight: '900', fontSize: '11px', color: '#9b68f6', backgroundColor: '#f0f0f0', padding: '4px 6px', border: '1px solid black' }}>
-                  {u.xp || 0} XP
+                  {userXp} XP
                 </div>
               </div>
             );

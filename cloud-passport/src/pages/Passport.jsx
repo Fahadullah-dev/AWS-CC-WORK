@@ -68,7 +68,13 @@ export default function Passport({ onTerminated }) {
     setForm(prev => {
       const currentMajors = prev.major || [];
       const isSelected = currentMajors.includes(m);
-      if (isSelected) return { ...prev, major: currentMajors.filter(x => x !== m) };
+      if (isSelected) {
+        if (currentMajors.length <= 1) {
+          setErrorPopup("AT LEAST 1 MAJOR IS REQUIRED.");
+          return prev;
+        }
+        return { ...prev, major: currentMajors.filter(x => x !== m) };
+      }
       if (currentMajors.length >= 2) { 
         setErrorPopup("MAXIMUM 2 MAJORS ALLOWED PER PASSPORT."); 
         return prev; 
@@ -157,14 +163,15 @@ export default function Passport({ onTerminated }) {
     );
   }
 
+  // --- NEW LEVEL LOGIC: 1 Level = 200 XP ---
   const currentTotalXp = profile?.xp || 0;
-  const currentLevel = Math.floor(currentTotalXp / 1000) + 1;
-  const xpTowardsNextLevel = currentTotalXp % 1000;
+  const currentLevel = Math.floor(currentTotalXp / 200) + 1;
+  const xpTowardsNextLevel = currentTotalXp % 200;
   
   let currentTier = "EXPLORER";
-  if (currentLevel >= 21) currentTier = "BUILDER";
-  if (currentLevel >= 41) currentTier = "ARCHITECT";
-  if (currentLevel >= 81) currentTier = "MASTER";
+  if (currentLevel >= 6) currentTier = "BUILDER";
+  if (currentLevel >= 13) currentTier = "ARCHITECT";
+  if (currentLevel >= 20) currentTier = "MASTER";
 
   return (
     <div style={{ backgroundColor: '#fafafa', position: 'relative', color: 'black', border: '8px solid white', boxSizing: 'border-box' }}>
@@ -298,10 +305,10 @@ export default function Passport({ onTerminated }) {
             <div style={{ border: '3px solid black', padding: '15px', backgroundColor: 'white', boxShadow: '4px 4px 0px #ccc' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontWeight: '900', fontSize: '11px', flexWrap: 'wrap' }}>
                 <span style={{ color: '#9b68f6' }}>&gt; XP STRENGTH (LVL {currentLevel})</span>
-                <span>{xpTowardsNextLevel} / 1000 PT</span>
+                <span>{xpTowardsNextLevel} / 200 PT</span>
               </div>
               <div style={{ width: '100%', height: '20px', border: '3px solid black', backgroundColor: '#eee', overflow: 'hidden' }}>
-                <div style={{ width: `${(xpTowardsNextLevel / 1000) * 100}%`, height: '100%', backgroundColor: '#ff9900', backgroundImage: 'linear-gradient(45deg, rgba(255,255,255,0.2) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.2) 75%, transparent 75%, transparent)', backgroundSize: '15px 15px' }}></div>
+                <div style={{ width: `${(xpTowardsNextLevel / 200) * 100}%`, height: '100%', backgroundColor: '#ff9900', backgroundImage: 'linear-gradient(45deg, rgba(255,255,255,0.2) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.2) 75%, transparent 75%, transparent)', backgroundSize: '15px 15px' }}></div>
               </div>
             </div>
             

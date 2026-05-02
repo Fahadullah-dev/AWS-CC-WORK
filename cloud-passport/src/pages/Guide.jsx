@@ -2,10 +2,10 @@ import React from 'react';
 
 export default function Guide() {
   const tiers = [
-    { name: 'EXPLORER', level: '1-20', xp: '0 - 20,000 XP', color: '#00e87f', icon: '/icons/explorer.svg' },
-    { name: 'BUILDER', level: '21-40', xp: '21,000 - 40,000 XP', color: '#9b68f6', icon: '/icons/builder.svg' },
-    { name: 'ARCHITECT', level: '41-80', xp: '41,000 - 80,000 XP', color: '#3ea1f3', icon: '/icons/architect.svg' },
-    { name: 'MASTER', level: '81-100+', xp: '81,000+ XP', color: '#ff57f6', icon: '/icons/master.svg' }
+    { name: 'EXPLORER', level: '1-5', xp: '0 - 1,199 XP', color: '#00e87f', icon: '/icons/explorer.svg' },
+    { name: 'BUILDER', level: '6-12', xp: '1,200 - 2,599 XP', color: '#9b68f6', icon: '/icons/builder.svg' },
+    { name: 'ARCHITECT', level: '13-19', xp: '2,600 - 3,999 XP', color: '#3ea1f3', icon: '/icons/architect.svg' },
+    { name: 'MASTER', level: '20+', xp: '4,000+ XP', color: '#ff57f6', icon: '/icons/master.svg' }
   ];
 
   return (
@@ -18,13 +18,13 @@ export default function Guide() {
 
       <div style={{ backgroundColor: '#fffbe6', border: '3px solid black', padding: '20px', marginBottom: '30px', boxShadow: '6px 6px 0px #ff9900', position: 'relative' }}>
         <div style={{ position: 'absolute', top: '-12px', left: '20px', background: 'black', color: 'white', padding: '2px 10px', fontSize: '10px', fontWeight: '900' }}>SYS MSG</div>
-        <h3 style={{ margin: '0 0 10px 0', fontWeight: '900', fontSize: '15px', textTransform: 'uppercase' }}>XP Leveling Protocol</h3>
+        <h3 style={{ margin: '0 0 10px 0', fontWeight: '900', fontSize: '15px', textTransform: 'uppercase' }}>12-Week Battle Pass Protocol</h3>
         <p style={{ margin: 0, fontSize: '13px', fontWeight: 'bold', lineHeight: '1.6' }}>
-          Every <span style={{ color: '#ff9900', fontWeight: '900', backgroundColor: 'black', padding: '2px 6px' }}>1,000 XP</span> earned unlocks a new Level. Attend official AWS Student Builder Group workshops, scan event projection nodes (QR), and build your technical identity.
+          Levels and Tiers reset every trimester! Every <span style={{ color: '#ff9900', fontWeight: '900', backgroundColor: 'black', padding: '2px 6px' }}>200 XP</span> earned unlocks a new Level. Attend official AWS Student Builder Group workshops, scan event projection nodes (QR), and build your technical identity before the season ends!
         </p>
       </div>
 
-      <h3 style={{ fontWeight: '900', fontSize: '15px', marginBottom: '15px', borderBottom: '2px dashed #ccc', paddingBottom: '10px' }}>TIER CLASSIFICATIONS</h3>
+      <h3 style={{ fontWeight: '900', fontSize: '15px', marginBottom: '15px', borderBottom: '2px dashed #ccc', paddingBottom: '10px', textTransform: 'uppercase' }}>Trimester Classifications</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
         {tiers.map((t, i) => (
           <div key={i} style={{ border: '3px solid black', display: 'flex', alignItems: 'stretch', backgroundColor: '#fdfdfd', boxShadow: '4px 4px 0px rgba(0,0,0,0.1)' }}>
