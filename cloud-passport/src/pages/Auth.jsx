@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { signIn, signUp, confirmSignUp, resendSignUpCode, resetPassword, confirmResetPassword } from 'aws-amplify/auth';
+import { signIn, signUp, confirmSignUp, resendSignUpCode, resetPassword, confirmResetPassword, getCurrentUser } from 'aws-amplify/auth';
+import { generateClient } from 'aws-amplify/api';
+import { createUser } from '../graphql/mutations';
 
 const AVAILABLE_MAJORS = ['AI', 'Computer Science', 'Cybersecurity', 'Business Information Systems', 'Game Dev'];
 const AVATAR_PRESETS = [
@@ -17,6 +19,7 @@ export default function Auth({ onAuthSuccess }) {
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [code, setCode] = useState('');
+  const [fullName, setFullName] = useState(''); 
   const [major, setMajor] = useState([]);
   const [year, setYear] = useState(3);
   const [intake, setIntake] = useState('Jan 2026');
@@ -72,6 +75,33 @@ export default function Auth({ onAuthSuccess }) {
     try {
       await confirmSignUp({ username: email, confirmationCode: code });
       await signIn({ username: email, password });
+      
+      try {
+        const { userId } = await getCurrentUser();
+        const client = generateClient();
+        const studentID = email.split('@')[0];
+
+        await client.graphql({
+          query: createUser,
+          variables: {
+            input: {
+              id: userId,
+              email: email,
+              full_name: fullName || studentID,
+              major: major.length > 0 ? major : ['General'],
+              year: parseInt(year),
+              intake: intake,
+              avatar_url: avatarUrl,
+              member_id: studentID,
+              xp: 0,
+              tier: "EXPLORER"
+            }
+          }
+        });
+      } catch (dbError) {
+        console.error("Profile sync error:", dbError);
+      }
+
       onAuthSuccess(); 
     } catch (err) { setPopup({ type: 'error', message: err.message }); }
     setLoading(false);
@@ -111,7 +141,7 @@ export default function Auth({ onAuthSuccess }) {
         <div style={overlayStyle} onClick={() => setPopup(null)}>
           <div style={popupCardStyle} onClick={e => e.stopPropagation()}>
             <div style={{ ...popupHeaderStyle, backgroundColor: popup.type === 'error' ? '#ff57f6' : '#00e87f' }}>
-              [ {popup.type === 'error' ? 'SYSTEM_ERROR' : 'SYSTEM_NOTICE'} ]
+              [ {popup.type === 'error' ? 'SYSTEM ERROR' : 'SYSTEM NOTICE'} ]
             </div>
             <div style={popupBodyStyle}>{popup.message}</div>
             <button onClick={() => setPopup(null)} style={popupBtnStyle}>ACKNOWLEDGE</button>
@@ -125,17 +155,16 @@ export default function Auth({ onAuthSuccess }) {
         )}
         
         <div style={headerStyle}>
-            {/* REMOVED FILTER */}
-            <img src="/icons/brandmark.svg" alt="AWS Student Builder Group" style={{ height: '100px', marginBottom: '20px' }} />
+            <img src="/icons/logo2.png" alt="AWS Student Builder Group" style={{ height: '70px', marginBottom: '20px', objectFit: 'contain', maxWidth: '100%' }} />
             <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '900', letterSpacing: '1px' }}>
-                {view === 'login' ? 'LOGIN_TERMINAL' : view === 'signup' ? 'CREATE_PASSPORT' : view === 'confirm' ? 'VERIFY_IDENTITY' : view === 'forgot' ? 'RECOVER_ACCESS' : 'SET_NEW_PASSWORD'}
+                {view === 'login' ? 'LOGIN TERMINAL' : view === 'signup' ? 'CREATE PASSPORT' : view === 'confirm' ? 'VERIFY IDENTITY' : view === 'forgot' ? 'RECOVER ACCESS' : 'SET NEW PASSWORD'}
             </h2>
         </div>
 
-        <div style={{ padding: '30px' }}>
+        <div style={{ padding: '25px' }}>
             {view === 'login' && (
             <form onSubmit={handleLogin} style={formStyle}>
-                <div style={inputGroup}><label style={labelStyle}>UNIVERSITY_EMAIL</label><input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} /></div>
+                <div style={inputGroup}><label style={labelStyle}>UNIVERSITY EMAIL</label><input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} /></div>
                 <div style={inputGroup}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <label style={labelStyle}>PASSWORD</label>
@@ -143,10 +172,10 @@ export default function Auth({ onAuthSuccess }) {
                     </div>
                     <input type={showPassword ? "text" : "password"} required value={password} onChange={e => setPassword(e.target.value)} style={inputStyle} />
                 </div>
-                <button type="submit" disabled={loading} style={primaryBtnStyle}>{loading ? 'SYNCING...' : 'ACCESS_PASSPORT'}</button>
+                <button type="submit" disabled={loading} style={primaryBtnStyle}>{loading ? 'SYNCING...' : 'ACCESS PASSPORT'}</button>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', fontSize: '11px', fontWeight: '900' }}>
-                    <span style={{ color: '#9b68f6', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setView('forgot')}>FORGOT_PASSWORD?</span>
-                    <span style={{ color: '#ff9900', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setView('signup')}>INITIALIZE_NEW_BUILDER</span>
+                    <span style={{ color: '#9b68f6', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setView('forgot')}>FORGOT PASSWORD?</span>
+                    <span style={{ color: '#ff9900', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setView('signup')}>INITIALIZE NEW BUILDER</span>
                 </div>
             </form>
             )}
@@ -154,60 +183,62 @@ export default function Auth({ onAuthSuccess }) {
             {view === 'forgot' && (
             <form onSubmit={handleForgotPassword} style={formStyle}>
                 <p style={{ fontSize: '12px', fontWeight: 'bold' }}>Enter your email to receive a recovery code.</p>
-                <div style={inputGroup}><label style={labelStyle}>UNIVERSITY_EMAIL</label><input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} /></div>
-                <button type="submit" disabled={loading} style={primaryBtnStyle}>SEND_RECOVERY_CODE</button>
+                <div style={inputGroup}><label style={labelStyle}>UNIVERSITY EMAIL</label><input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} /></div>
+                <button type="submit" disabled={loading} style={primaryBtnStyle}>SEND RECOVERY CODE</button>
             </form>
             )}
 
             {view === 'reset' && (
             <form onSubmit={handleResetPassword} style={formStyle}>
-                <div style={inputGroup}><label style={labelStyle}>RECOVERY_CODE</label><input type="text" required value={code} onChange={e => setCode(e.target.value)} style={inputStyle} /></div>
+                <div style={inputGroup}><label style={labelStyle}>RECOVERY CODE</label><input type="text" required value={code} onChange={e => setCode(e.target.value)} style={inputStyle} /></div>
                 <div style={inputGroup}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <label style={labelStyle}>NEW_PASSWORD</label>
+                        <label style={labelStyle}>NEW PASSWORD</label>
                         <span onClick={() => setShowPassword(!showPassword)} style={{ fontSize: '10px', fontWeight: '900', cursor: 'pointer', color: '#3ea1f3' }}>{showPassword ? '[HIDE]' : '[SHOW]'}</span>
                     </div>
                     <input type={showPassword ? "text" : "password"} required value={newPassword} onChange={e => setNewPassword(e.target.value)} style={inputStyle} />
                 </div>
-                <button type="submit" disabled={loading} style={primaryBtnStyle}>CONFIRM_NEW_PASSWORD</button>
+                <button type="submit" disabled={loading} style={primaryBtnStyle}>CONFIRM NEW PASSWORD</button>
             </form>
             )}
 
             {view === 'signup' && (
             <form onSubmit={handleSignUp} style={formStyle}>
-                <div style={inputGroup}><label style={labelStyle}>MURDOCH_EMAIL (@student.murdoch.edu.au)</label><input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} /></div>
+                <div style={inputGroup}><label style={labelStyle}>FULL NAME</label><input type="text" required value={fullName} onChange={e => setFullName(e.target.value)} style={inputStyle} /></div>
+                
+                <div style={inputGroup}><label style={labelStyle}>MURDOCH EMAIL (@student.murdoch.edu.au)</label><input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} /></div>
                 <div style={inputGroup}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <label style={labelStyle}>SECURE_PASSWORD</label>
+                        <label style={labelStyle}>SECURE PASSWORD</label>
                         <span onClick={() => setShowPassword(!showPassword)} style={{ fontSize: '10px', fontWeight: '900', cursor: 'pointer', color: '#3ea1f3' }}>{showPassword ? '[HIDE]' : '[SHOW]'}</span>
                     </div>
                     <input type={showPassword ? "text" : "password"} required value={password} onChange={e => setPassword(e.target.value)} style={inputStyle} />
                 </div>
                 <div>
-                  <label style={labelStyle}>MAJORS_ARRAY (MAX 2)</label>
+                  <label style={labelStyle}>MAJORS (MAX 2)</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                       {AVAILABLE_MAJORS.map(m => (<div key={m} onClick={() => toggleMajor(m)} style={{ ...pillStyle, background: major.includes(m) ? '#ff9900' : '#f0f0f0' }}>{m}</div>))}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
-                    <div style={{ flex: 1 }}><label style={labelStyle}>YEAR_LVL</label><select value={year} onChange={e => setYear(e.target.value)} style={inputStyle}><option value={1}>1</option><option value={2}>2</option><option value={3}>3</option><option value={4}>4</option></select></div>
-                    <div style={{ flex: 1 }}><label style={labelStyle}>INTAKE</label><input required type="text" placeholder="e.g. Jan 2026" value={intake} onChange={e => setIntake(e.target.value)} style={inputStyle} /></div>
+                    <div style={{ flex: 1 }}><label style={labelStyle}>YEAR LEVEL</label><select value={year} onChange={e => setYear(e.target.value)} style={inputStyle}><option value={1}>1</option><option value={2}>2</option><option value={3}>3</option><option value={4}>4</option></select></div>
+                    <div style={{ flex: 1 }}><label style={labelStyle}>FIRST INTAKE</label><input required type="text" placeholder="e.g. Jan 2026" value={intake} onChange={e => setIntake(e.target.value)} style={inputStyle} /></div>
                 </div>
                 <div style={{ border: '3px solid black', padding: '15px', backgroundColor: '#f9f9f9' }}>
-                    <label style={labelStyle}>SELECT_AVATAR_UNIT</label>
+                    <label style={labelStyle}>SELECT AVATAR</label>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
                         {AVATAR_PRESETS.map(url => (<img key={url} src={url} onClick={() => setAvatarUrl(url)} style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', border: avatarUrl === url ? '4px solid #3ea1f3' : '2px solid black', cursor: 'pointer' }} />))}
                     </div>
                 </div>
-                <button type="submit" disabled={loading} style={primaryBtnStyle}>ISSUE_PASSPORT</button>
+                <button type="submit" disabled={loading} style={primaryBtnStyle}>ISSUE PASSPORT</button>
             </form>
             )}
 
             {view === 'confirm' && (
             <form onSubmit={handleConfirm} style={formStyle}>
-                <label style={{...labelStyle, textAlign: 'center'}}>ENTER_VERIFICATION_CODE SENT TO EMAIL</label>
+                <label style={{...labelStyle, textAlign: 'center'}}>ENTER VERIFICATION CODE SENT TO EMAIL</label>
                 <input type="text" required value={code} onChange={e => setCode(e.target.value)} style={{ ...inputStyle, textAlign: 'center', fontSize: '28px', letterSpacing: '5px' }} />
-                <button type="submit" disabled={loading} style={primaryBtnStyle}>CONFIRM_IDENTITY</button>
+                <button type="submit" disabled={loading} style={primaryBtnStyle}>CONFIRM IDENTITY</button>
                 <div style={{ textAlign: 'center', marginTop: '10px' }}><span onClick={handleResendCode} style={{ fontSize: '11px', fontWeight: '900', color: '#9b68f6', cursor: 'pointer', textDecoration: 'underline' }}>DIDN'T RECEIVE IT? RESEND CODE</span></div>
             </form>
             )}
@@ -217,25 +248,20 @@ export default function Auth({ onAuthSuccess }) {
   );
 }
 
-// AWS STUDENT BUILDER GROUP STYLES
 const containerStyle = { 
-  minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '40px 20px', backgroundColor: '#1a1c21', 
-  backgroundImage: `
-    linear-gradient(#2d3139 2px, transparent 2px), 
-    linear-gradient(90deg, #2d3139 2px, transparent 2px),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280'%3E%3Crect x='0' y='0' width='80' height='80' fill='%23ff9900' opacity='0.8'/%3E%3Crect x='200' y='0' width='80' height='80' fill='%23ff9900' opacity='0.8'/%3E%3Crect x='120' y='0' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='80' y='40' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='160' y='40' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='40' y='80' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='200' y='80' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3Crect x='120' y='80' width='40' height='40' fill='%23ff57f6' opacity='0.8'/%3E%3Crect x='80' y='120' width='40' height='40' fill='%23ff57f6' opacity='0.8'/%3E%3Crect x='160' y='120' width='40' height='40' fill='%23ff57f6' opacity='0.8'/%3E%3Crect x='0' y='160' width='80' height='80' fill='%23ff9900' opacity='0.8'/%3E%3Crect x='200' y='160' width='80' height='80' fill='%23ff9900' opacity='0.8'/%3E%3Crect x='120' y='200' width='40' height='40' fill='%239b68f6' opacity='0.8'/%3E%3C/svg%3E")
-  `, 
-  backgroundSize: '40px 40px, 40px 40px, 500px 500px', backgroundPosition: '0 0, 0 0, right 50px', backgroundRepeat: 'repeat, repeat, no-repeat', color: 'black' 
+  minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '5% 15px', backgroundColor: '#1a1c21', 
+  backgroundImage: `url("/icons/background.png")`, 
+  backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', backgroundAttachment: 'fixed', color: 'black', boxSizing: 'border-box' 
 };
-const cardStyle = { width: '100%', maxWidth: '480px', backgroundColor: 'white', border: '4px solid white', boxShadow: '12px 12px 0px black', position: 'relative', color: 'black' };
+const cardStyle = { width: '100%', maxWidth: '480px', backgroundColor: 'white', border: '4px solid white', boxShadow: '12px 12px 0px black', position: 'relative', color: 'black', boxSizing: 'border-box' };
 const headerStyle = { backgroundColor: '#1a1c21', color: 'white', padding: '30px 20px', borderBottom: '4px solid white', textAlign: 'center' };
 const backBtnStyle = { position: 'absolute', top: '22px', left: '15px', background: 'white', border: '2px solid black', color: 'black', fontWeight: '900', fontSize: '10px', padding: '5px 10px', cursor: 'pointer', zIndex: 10 };
 const formStyle = { display: 'flex', flexDirection: 'column', gap: '20px' };
 const inputGroup = { display: 'flex', flexDirection: 'column', gap: '5px' };
 const labelStyle = { fontSize: '10px', fontWeight: '900', color: 'black', letterSpacing: '0.5px' };
-const inputStyle = { width: '100%', padding: '12px', border: '2px solid black', fontWeight: 'bold', outline: 'none', color: 'black', backgroundColor: 'white' };
+const inputStyle = { width: '100%', padding: '12px', border: '2px solid black', fontWeight: 'bold', outline: 'none', color: 'black', backgroundColor: 'white', boxSizing: 'border-box' };
 const pillStyle = { padding: '6px 12px', border: '2px solid black', fontSize: '11px', fontWeight: '900', cursor: 'pointer', color: 'black' };
-const primaryBtnStyle = { padding: '15px', border: '4px solid black', backgroundColor: '#3ea1f3', color: 'white', fontWeight: '900', fontSize: '14px', cursor: 'pointer', boxShadow: '5px 5px 0px black' };
+const primaryBtnStyle = { padding: '15px', border: '4px solid black', backgroundColor: '#3ea1f3', color: 'white', fontWeight: '900', fontSize: '14px', cursor: 'pointer', boxShadow: '5px 5px 0px black', width: '100%' };
 const overlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' };
 const popupCardStyle = { backgroundColor: 'white', border: '4px solid black', boxShadow: '12px 12px 0px #ff9900', width: '100%', maxWidth: '400px', textAlign: 'center', overflow: 'hidden' };
 const popupHeaderStyle = { color: 'white', padding: '15px', borderBottom: '4px solid black', fontWeight: '900', fontSize: '16px', letterSpacing: '2px' };

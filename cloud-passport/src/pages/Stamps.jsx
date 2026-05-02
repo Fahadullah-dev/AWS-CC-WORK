@@ -30,39 +30,38 @@ export default function Stamps() {
     loadStamps();
   }, []);
 
-  if (loading) return <div style={{ padding: '50px', textAlign: 'center', fontWeight: '900', color: 'black' }}>SYNCING_REWARDS...</div>;
-
-  const coreStamps = stamps.filter(s => s.track !== 'General');
-  const generalStamps = stamps.filter(s => s.track === 'General');
-
-  const StampGrid = ({ data, title }) => (
-    <div style={{ marginBottom: '30px' }}>
-      <h3 style={{ fontSize: '14px', fontWeight: '900', backgroundColor: 'black', color: 'white', display: 'inline-block', padding: '5px 15px', marginBottom: '15px' }}>{title}</h3>
-      {data.length === 0 ? (
-        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#999' }}>NO_DATA_FOUND</div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '15px' }}>
-          {data.map(s => (
-            <div key={s.id} style={{ border: s.collected ? '3px solid black' : '2px dashed #ccc', padding: '15px 5px', textAlign: 'center', backgroundColor: s.collected ? 'white' : '#f9f9f9', position: 'relative' }}>
-              <img src={s.emoji || "/icons/event-default.png"} style={{ width: '45px', height: '45px', objectFit: 'contain', marginBottom: '10px', filter: s.collected ? 'none' : 'grayscale(1) opacity(0.2)' }} alt="stamp" />
-              <div style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase' }}>{s.name}</div>
-              {s.collected && (
-                <div style={{ position: 'absolute', top: '-8px', right: '-8px', backgroundColor: '#FF9900', border: '2px solid black', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '2px 2px 0px black' }}>
-                  <img src="/icons/check.png" style={{ width: '12px' }} alt="check" />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  if (loading) return <div style={{ padding: '50px', textAlign: 'center', fontWeight: '900', color: 'black' }}>SYNCING REWARDS...</div>;
 
   return (
-    <div style={{ padding: '30px', backgroundColor: 'white', color: 'black' }}>
-      <h2 style={{ borderBottom: '4px solid black', paddingBottom: '10px', marginTop: 0, fontWeight: '900' }}>[ STAMP_LOG ]</h2>
-      <StampGrid data={coreStamps} title="CORE_TRACK_MISSIONS" />
-      <StampGrid data={generalStamps} title="GENERAL_OPERATIONS (Hackathons, Speakers)" />
+    <div style={{ backgroundColor: 'white', padding: '25px', color: 'black', boxSizing: 'border-box' }}>
+      <h2 style={{ marginTop: 0, fontWeight: '900', fontSize: '18px', borderBottom: '4px solid black', paddingBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <img src="/icons/logo.svg" alt="Cloud" style={{ height: '24px', objectFit: 'contain' }} />
+          [ STAMP LOG ]
+        </h2>
+
+      <div style={{ marginBottom: '30px', marginTop: '20px' }}>
+        <h3 style={{ fontSize: '13px', fontWeight: '900', backgroundColor: 'black', color: 'white', display: 'inline-block', padding: '5px 15px', marginBottom: '15px' }}>
+          ALL MISSION BADGES
+        </h3>
+        
+        {stamps.length === 0 ? (
+          <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#999' }}>NO DATA FOUND</div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '10px' }}>
+            {stamps.map(s => (
+              <div key={s.id} style={{ border: s.collected ? '3px solid black' : '2px dashed #ccc', padding: '10px 5px', textAlign: 'center', backgroundColor: s.collected ? 'white' : '#f9f9f9', position: 'relative' }}>
+                <img src={s.emoji || "/icons/speaker.svg"} style={{ width: '35px', height: '35px', objectFit: 'contain', marginBottom: '8px', filter: s.collected ? 'none' : 'grayscale(1) opacity(0.2)' }} alt="stamp" />
+                <div style={{ fontSize: '9px', fontWeight: '900', textTransform: 'uppercase', wordWrap: 'break-word' }}>{s.name}</div>
+                {s.collected && (
+                  <div style={{ position: 'absolute', top: '-6px', right: '-6px', backgroundColor: '#FF9900', border: '2px solid black', width: '18px', height: '18px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '2px 2px 0px black' }}>
+                    <img src="/icons/check.png" style={{ width: '10px' }} alt="check" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
