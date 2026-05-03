@@ -6,3 +6,180 @@ a { color: inherit; text-decoration: none; }
 img { display: block; max-width: 100%; }
 ul { list-style: none; }
 button { cursor: pointer; border: none; background: none; font-family: inherit; }
+
+/* From the passport */
+
+
+/* =========================================
+   1. GLOBAL VARIABLES & THEME
+   ========================================= */
+:root {
+  /* Your Custom Neon Colors */
+  --neon-purple: #ae5cff;
+  --aws-orange: #ff9902;
+  --bg-dark: #0b1120;
+  --neon-pink: #ff56e9;
+  --neon-blue: #43b4ff;
+  --neon-green: #06e582;
+
+  /* Fahad's Original Variables (Kept so his Checkin page doesn't break) */
+  --orange: #FF9900;
+  --dark: #0D1321;
+  --border: rgba(0,0,0,0.08);
+  --text: #0f172a;
+  --muted: #64748b;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+* { 
+  box-sizing: border-box; 
+  margin: 0; 
+  padding: 0; 
+}
+
+/* =========================================
+   2. MAIN DARK CINEMATIC BACKGROUND
+   ========================================= */
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  
+  /* Forces the deep dark background, overriding any old code */
+  background-color: var(--bg-dark) !important;
+  
+  /* Adds a subtle, high-tech glowing grid behind the book */
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+  
+  color: white;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* =========================================
+   3. NEON & GLASS UI (For Login/Auth)
+   ========================================= */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.btn-glow {
+  background: linear-gradient(135deg, var(--aws-orange), var(--neon-pink));
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.btn-glow:hover {
+  box-shadow: 0 0 15px rgba(255, 153, 2, 0.6), 0 0 30px rgba(255, 86, 233, 0.4);
+  transform: translateY(-2px);
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--neon-blue);
+  color: var(--neon-blue);
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 800;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.btn-outline:hover {
+  background: rgba(67, 180, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+/* =========================================
+   4. REALISTIC BOOK SHADOWS
+   ========================================= */
+/* These target the react-pageflip library to give the book actual depth */
+.stf__wrapper {
+  margin: 0 auto !important;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(255, 153, 0, 0.1) !important;
+  border-radius: 8px;
+}
+
+/* Adds a spine shadow so it looks like folded paper */
+.stf__block {
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
+}
+
+/* =========================================
+   5. FAHAD'S UTILITIES (Checkin & Layouts)
+   ========================================= */
+.page-wrap { display: flex; flex-direction: column; gap: 16px; height: 100%; color: var(--text); }
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.page-header h2 { font-size: 22px; font-weight: 800; color: #0f172a; margin: 0; }
+.muted { color: var(--muted); font-size: 13px; font-weight: 500; }
+.error { background: #fef2f2; border: 1px solid #fca5a5; color: #dc2626; padding: 10px; border-radius: var(--radius-sm); font-size: 13px; font-weight: bold; text-align: center; }
+
+/* Fahad's Inputs */
+input, textarea, select {
+  width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1;
+  border-radius: var(--radius-sm); font-size: 14px; font-family: inherit;
+  background: #f8fafc; color: var(--text);
+}
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--orange); box-shadow: 0 0 0 3px rgba(255, 153, 0, 0.2); }
+
+/* Fahad's Buttons */
+.btn-primary { 
+  background: var(--orange); 
+  color: #fff; 
+  font-weight: 800; 
+  border: none; 
+  padding: 12px 20px; 
+  border-radius: var(--radius-sm); 
+  cursor: pointer; 
+  transition: all 0.2s;
+  font-family: inherit;
+  font-size: 14px;
+}
+.btn-primary:hover { background: #e68a00; transform: translateY(-1px); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── CHECKIN SCANNER STYLES ── */
+.checkin-idle { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 40px 20px; text-align: center; }
+.qr-placeholder { font-size: 56px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }
+.scanner-wrap { position: relative; width: 100%; max-width: 300px; margin: 0 auto; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+.scanner-video { width: 100%; display: block; border: 3px solid var(--orange); border-radius: 16px; }
+.scan-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.scan-box { width: 200px; height: 200px; border: 3px dashed var(--neon-green); border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5); }
+.checkin-success, .checkin-error { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 40px 20px; text-align: center; color: #0f172a; }
+.stamp-anim { font-size: 72px; animation: pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+@keyframes pop { 0% { transform: scale(0.5); opacity: 0 } 100% { transform: scale(1); opacity: 1 } }
+.success-event { font-size: 22px; font-weight: 800; }
+.success-xp { font-size: 26px; font-weight: 800; color: var(--orange); }
+.success-total { font-size: 14px; color: var(--muted); font-weight: 600; }
+
+
+/* ── MOBILE RESPONSIVENESS ── */
+@media (max-width: 768px) {
+  .stf__wrapper {
+    width: 95vw !important;     /* Shrink book to fit screen */
+    height: 80vh !important;
+    margin-top: 10px !important;
+  }
+  .page-content {
+    padding: 15px !important;   /* Less padding on phones */
+  }
+  .page-left, .page-right {
+    padding: 15px !important;
+  }
+}

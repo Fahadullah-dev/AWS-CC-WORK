@@ -3,6 +3,7 @@ import anime from "../utils/anime";
 import { useBreakpoint } from "../hooks/useBreakpoint";
 import { COLORS, FONTS, WEIGHT, SHADOW } from "../styles/tokens";
 import { PASSPORT_LINKS } from "../space";
+import { Link } from 'react-router-dom'
 
 const FEATURES = [
   {
@@ -224,14 +225,14 @@ export default function PassportGateway() {
             Your official ID for the AWS Student Builder Group. Track your progress, earn XP for attending events, unlock exclusive badges, and level up your cloud skills as you build.
           </div>
           <div ref={heroBtnsRef} style={s.heroBtns}>
-            <a
-              href={PASSPORT_LINKS.initialize} style={s.ctaPrimary}
+            <Link
+              to={PASSPORT_LINKS.initialize} style={s.ctaPrimary}
               onMouseEnter={(e) => { e.currentTarget.style.transform = "translate(-2px,-2px)"; e.currentTarget.style.boxShadow = "6px 6px 0 #111"; }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = SHADOW.card; }}
             >
               <img src="https://img.icons8.com/fluency/48/id-verified.png" width={18} height={18} alt="" style={{ display: "block" }} />
               INITIALIZE PASSPORT
-            </a>
+            </Link>
           </div>
         </div>
 
@@ -287,13 +288,13 @@ export default function PassportGateway() {
         <div style={s.finalInner} data-io="final-cta">
           <h2 style={s.finalH2}>READY TO BEGIN YOUR JOURNEY?</h2>
           <p style={s.finalSub}>Creating a passport takes 30 seconds. You just need your university email.</p>
-          <a
-            href={PASSPORT_LINKS.create} style={s.finalBtn}
+          <Link
+            to={PASSPORT_LINKS.create} style={s.finalBtn}
             onMouseEnter={(e) => { e.currentTarget.style.transform = "translate(-2px,-2px)"; e.currentTarget.style.boxShadow = "6px 6px 0 rgba(255,255,255,0.2)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "4px 4px 0 rgba(255,255,255,0.2)"; }}
           >
             CREATE MY PASSPORT
-          </a>
+          </Link>
         </div>
       </section>
     </div>

@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import PublicLayout from '../components/PublicLayout'
 import Home            from '../pages/Home'
 import Events          from '../pages/Events'
@@ -7,7 +7,13 @@ import Team            from '../pages/Team'
 import Contact         from '../pages/Contact'
 import PassportGateway from '../pages/PassportGateway'
 
-export default function AppRoutes() {
+// Passport pages
+import Auth             from '../pages/Auth'
+import Dashboard        from '../pages/Dashboard'
+import Admin            from '../pages/Admin'
+import PublicPassport   from '../pages/PublicPassport'
+
+export default function AppRoutes({ user, checkUser }) {
   return (
     <Routes>
       <Route element={<PublicLayout />}>
@@ -19,6 +25,12 @@ export default function AppRoutes() {
         <Route path="/contact"           element={<Contact />} />
         <Route path="/passport-gateway"  element={<PassportGateway />} />
       </Route>
+
+      {/* Passport routes */}
+      <Route path="/auth"          element={<Auth onAuthSuccess={checkUser} />} />
+      <Route path="/dashboard"     element={user ? <Dashboard user={user} /> : <Navigate to="/auth" />} />
+      <Route path="/admin"         element={user ? <Admin user={user} />     : <Navigate to="/auth" />} />
+      <Route path="/builder/:slug" element={<PublicPassport />} />
     </Routes>
   )
 }
