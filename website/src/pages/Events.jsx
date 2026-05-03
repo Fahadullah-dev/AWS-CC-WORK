@@ -11,7 +11,7 @@ import {
 } from "../components/PixelIcons";
 
 const INSTAGRAM_LINK = "https://www.instagram.com/murdochdubaislt/";
-const WHATSAPP_LINK = "#";
+const WHATSAPP_LINK = "https://chat.whatsapp.com/E0HRAiTukmBF8KTj68pr3H";
 
 const REG_PROTOCOL = [
   {
