@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import anime from "../utils/anime";
 import { useBreakpoint } from "../hooks/useBreakpoint";
 import { COLORS, FONTS, WEIGHT, SHADOW } from "../styles/tokens";
-import { PASSPORT_LINKS } from "../config/passportLinks";
+import { PASSPORT_LINKS } from "../space";
 
 const FEATURES = [
   {

@@ -13,6 +13,12 @@ const QUICK_LINKS = [
 
 const SOCIALS = [
   {
+    href: "https://www.meetup.com/aws-cloud-club-murdoch-university-dubai/",
+    label: "MEETUP",
+    icon: "https://img.icons8.com/external-tal-revivo-color-tal-revivo/96/external-meetup-app-for-hosting-in-person-events-with-similar-interests-logo-color-tal-revivo.png",
+    bg: "#ED1C40",
+  },
+  {
     href: "https://www.instagram.com/murdochdubaislt/",
     label: "INSTAGRAM",
     icon: "https://img.icons8.com/fluency/48/instagram-new.png",
@@ -122,8 +128,8 @@ export default function Footer() {
       alignItems: "center",
       gap: "8px",
       padding: "8px 14px",
-      border: "2px solid rgba(255,255,255,0.25)",
-      boxShadow: "2px 2px 0px rgba(0,0,0,0.4)",
+      border: "2px solid rgba(255,255,255,0.15)",
+      boxShadow: "2px 2px 0px rgba(0,0,0,0.6)",
       fontFamily: FONTS.mono,
       fontSize: "12px",
       fontWeight: WEIGHT.bold,
@@ -134,6 +140,7 @@ export default function Footer() {
       borderRadius: 0,
       color: "#FFFFFF",
       marginBottom: "8px",
+      background: "#111111",
     },
     bottom: {
       ...C,
@@ -209,7 +216,7 @@ export default function Footer() {
                   href={href}
                   target={href !== "#" ? "_blank" : undefined}
                   rel="noreferrer"
-                  style={{ ...s.socialBtn, background: bg }}
+                  style={s.socialBtn}
                   onMouseEnter={(e) =>
                     anime({
                       targets: e.currentTarget,
