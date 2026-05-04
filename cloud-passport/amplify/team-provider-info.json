@@ -12,20 +12,20 @@
       "AmplifyAppId": "d1bs82gz4iotvl"
     },
     "categories": {
-      "auth": {
-        "cloudpassport338d1772": {}
-      },
-      "api": {
-        "cloudpassport": {}
-      },
-      "storage": {
-        "s3de993ba8": {}
-      },
       "hosting": {
         "amplifyhosting": {
           "appId": "d1bs82gz4iotvl",
           "type": "manual"
         }
+      },
+      "auth": {
+        "cloudpassport338d1772": {}
+      },
+      "storage": {
+        "s3de993ba8": {}
+      },
+      "api": {
+        "cloudpassport": {}
       }
     }
   }

@@ -5,6 +5,7 @@ import { listEvents, listAttendances } from '../graphql/queries';
 
 export default function Stamps() {
   const [stamps, setStamps] = useState([]);
+  const [rareStamps, setRareStamps] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,21 +17,64 @@ export default function Stamps() {
           client.graphql({ query: listEvents }),
           client.graphql({ query: listAttendances, variables: { filter: { userID: { eq: userId } } } })
         ]);
+        
+        const allEvents = eRes.data.listEvents.items || [];
+        const myAtts = aRes.data.listAttendances.items || [];
 
-        const allEvents = eRes.data.listEvents.items;
-        const myAtts = aRes.data.listAttendances.items;
+        const merged = allEvents.map(event => {
+          const att = myAtts.find(a => a.eventID === event.id);
+          return { 
+            ...event, 
+            collected: !!att, 
+            earnedDate: att ? new Date(att.createdAt) : null 
+          };
+        });
 
-        const merged = allEvents.map(event => ({
-          ...event,
-          collected: myAtts.some(a => a.eventID === event.id)
-        }));
-        setStamps(merged);
+        // STRICT SORTING: Collected stamps first (newest to oldest), then uncollected stamps
+        merged.sort((a, b) => {
+          if (a.collected && b.collected) return b.earnedDate - a.earnedDate; 
+          if (a.collected) return -1;
+          if (b.collected) return 1;
+          return 0;
+        });
+
+        setStamps(merged.filter(s => s.xp_reward < 500)); 
+        setRareStamps(merged.filter(s => s.xp_reward >= 500)); 
       } catch (err) { console.error(err); } finally { setLoading(false); }
     }
     loadStamps();
   }, []);
 
   if (loading) return <div style={{ padding: '50px', textAlign: 'center', fontWeight: '900', color: 'black' }}>SYNCING REWARDS...</div>;
+
+  // FORMATS DATE EXACTLY AS: "3 MAY 26"
+  const formatDate = (date) => {
+    if (!date) return '';
+    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }).toUpperCase();
+  };
+
+  const renderGrid = (items) => (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '15px' }}>
+      {items.map(s => (
+        <div key={s.id} style={{ border: s.collected ? '3px solid black' : '2px dashed #ccc', padding: '15px 5px', textAlign: 'center', backgroundColor: s.collected ? 'white' : '#f9f9f9', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+          <img src={s.emoji || "/icons/speaker.svg"} style={{ width: '40px', height: '40px', objectFit: 'contain', marginBottom: '8px', filter: s.collected ? 'none' : 'grayscale(1) opacity(0.2)' }} alt="stamp" />
+          <div style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', wordWrap: 'break-word' }}>{s.name}</div>
+          
+          {s.collected && (
+            <div style={{ fontSize: '9px', color: '#666', marginTop: '8px', fontWeight: 'bold', borderTop: '2px dotted #ccc', paddingTop: '6px', width: '100%' }}>
+              ACQUIRED:<br/><span style={{ color: 'black' }}>{formatDate(s.earnedDate)}</span>
+            </div>
+          )}
+          
+          {s.collected && (
+            <div style={{ position: 'absolute', top: '-6px', right: '-6px', backgroundColor: '#FF9900', border: '2px solid black', width: '18px', height: '18px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '2px 2px 0px black' }}>
+              <img src="/icons/check.png" style={{ width: '10px' }} alt="check" />
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div style={{ backgroundColor: 'white', padding: '25px', color: 'black', boxSizing: 'border-box' }}>
@@ -39,28 +83,22 @@ export default function Stamps() {
           [ STAMP LOG ]
         </h2>
 
-      <div style={{ marginBottom: '30px', marginTop: '20px' }}>
+      <div style={{ marginBottom: '40px', marginTop: '20px' }}>
+        <h3 style={{ fontSize: '13px', fontWeight: '900', backgroundColor: '#9b68f6', color: 'white', display: 'inline-block', padding: '5px 15px', marginBottom: '15px' }}>
+          RARE COLLECTIONS
+        </h3>
+        {rareStamps.length === 0 ? (
+          <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#ccc' }}>NO RARE STAMPS DISCOVERED YET.</div>
+        ) : renderGrid(rareStamps)}
+      </div>
+
+      <div style={{ marginBottom: '30px' }}>
         <h3 style={{ fontSize: '13px', fontWeight: '900', backgroundColor: 'black', color: 'white', display: 'inline-block', padding: '5px 15px', marginBottom: '15px' }}>
           ALL MISSION BADGES
         </h3>
-        
         {stamps.length === 0 ? (
           <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#999' }}>NO DATA FOUND</div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '10px' }}>
-            {stamps.map(s => (
-              <div key={s.id} style={{ border: s.collected ? '3px solid black' : '2px dashed #ccc', padding: '10px 5px', textAlign: 'center', backgroundColor: s.collected ? 'white' : '#f9f9f9', position: 'relative' }}>
-                <img src={s.emoji || "/icons/speaker.svg"} style={{ width: '35px', height: '35px', objectFit: 'contain', marginBottom: '8px', filter: s.collected ? 'none' : 'grayscale(1) opacity(0.2)' }} alt="stamp" />
-                <div style={{ fontSize: '9px', fontWeight: '900', textTransform: 'uppercase', wordWrap: 'break-word' }}>{s.name}</div>
-                {s.collected && (
-                  <div style={{ position: 'absolute', top: '-6px', right: '-6px', backgroundColor: '#FF9900', border: '2px solid black', width: '18px', height: '18px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '2px 2px 0px black' }}>
-                    <img src="/icons/check.png" style={{ width: '10px' }} alt="check" />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        ) : renderGrid(stamps)}
       </div>
     </div>
   );

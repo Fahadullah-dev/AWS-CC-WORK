@@ -3,7 +3,7 @@ import { signIn, signUp, confirmSignUp, resendSignUpCode, resetPassword, confirm
 import { generateClient } from 'aws-amplify/api';
 import { createUser } from '../graphql/mutations';
 
-const AVAILABLE_MAJORS = ['AI', 'Computer Science', 'Cybersecurity', 'Business Information Systems', 'Game Dev'];
+const AVAILABLE_MAJORS = ['AI', 'CS', 'Cyber', 'BIS', 'Game Dev'];
 const AVATAR_PRESETS = [
   "/avatars/pfp1.jpg", "/avatars/pfp2.jpg", "/avatars/pfp3.jpg", "/avatars/pfp4.jpg", "/avatars/pfp5.jpg",
   "/avatars/pfp6.jpg", "/avatars/pfp7.jpg", "/avatars/pfp8.jpg", "/avatars/pfp9.jpg", "/avatars/pfp10.jpg"
@@ -22,13 +22,17 @@ export default function Auth({ onAuthSuccess }) {
   const [fullName, setFullName] = useState(''); 
   const [major, setMajor] = useState([]);
   const [year, setYear] = useState(3);
-  const [intake, setIntake] = useState('Jan 2026');
+  
+  const [intakeMonth, setIntakeMonth] = useState('Jan');
+  const [intakeYear, setIntakeYear] = useState('2026');
+  
   const [avatarUrl, setAvatarUrl] = useState(AVATAR_PRESETS[0]); 
 
   const toggleMajor = (m) => {
     setMajor(prev => {
-      if (prev.includes(m)) return prev.filter(x => x !== m);
-      if (prev.length >= 2) { setPopup({ type: 'error', message: "Max 2 majors allowed" }); return prev; }
+      const isSelected = prev.includes(m);
+      if (isSelected) return prev.filter(x => x !== m);
+      if (prev.length >= 2) { setPopup({ type: 'error', message: "MAXIMUM 2 MAJORS ALLOWED PER PASSPORT." }); return prev; }
       return [...prev, m];
     });
   };
@@ -90,7 +94,7 @@ export default function Auth({ onAuthSuccess }) {
               full_name: fullName || studentID,
               major: major.length > 0 ? major : ['General'],
               year: parseInt(year),
-              intake: intake,
+              intake: `${intakeMonth} ${intakeYear}`,
               avatar_url: avatarUrl,
               member_id: studentID,
               xp: 0,
@@ -137,14 +141,21 @@ export default function Auth({ onAuthSuccess }) {
 
   return (
     <div style={containerStyle}>
+      <style>{`
+        @keyframes slideBg {
+          0% { background-position: 0 0; }
+          100% { background-position: 28px 0; }
+        }
+      `}</style>
+      
       {popup && (
         <div style={overlayStyle} onClick={() => setPopup(null)}>
           <div style={popupCardStyle} onClick={e => e.stopPropagation()}>
-            <div style={{ ...popupHeaderStyle, backgroundColor: popup.type === 'error' ? '#ff57f6' : '#00e87f' }}>
+            <div style={{ ...popupHeaderStyle, backgroundColor: popup.type === 'error' ? '#ef4444' : '#00e87f' }}>
               [ {popup.type === 'error' ? 'SYSTEM ERROR' : 'SYSTEM NOTICE'} ]
             </div>
             <div style={popupBodyStyle}>{popup.message}</div>
-            <button onClick={() => setPopup(null)} style={popupBtnStyle}>ACKNOWLEDGE</button>
+            <button onClick={() => setPopup(null)} style={{...popupBtnStyle, backgroundColor: 'black', color: 'white'}}>ACKNOWLEDGE</button>
           </div>
         </div>
       )}
@@ -156,7 +167,7 @@ export default function Auth({ onAuthSuccess }) {
         
         <div style={headerStyle}>
             <img src="/icons/logo2.png" alt="AWS Student Builder Group" style={{ height: '70px', marginBottom: '20px', objectFit: 'contain', maxWidth: '100%' }} />
-            <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '900', letterSpacing: '1px' }}>
+            <h2 style={{ margin: '0', fontSize: '20px', fontWeight: '900', letterSpacing: '1px' }}>
                 {view === 'login' ? 'LOGIN TERMINAL' : view === 'signup' ? 'CREATE PASSPORT' : view === 'confirm' ? 'VERIFY IDENTITY' : view === 'forgot' ? 'RECOVER ACCESS' : 'SET NEW PASSWORD'}
             </h2>
         </div>
@@ -217,12 +228,34 @@ export default function Auth({ onAuthSuccess }) {
                 <div>
                   <label style={labelStyle}>MAJORS (MAX 2)</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                      {AVAILABLE_MAJORS.map(m => (<div key={m} onClick={() => toggleMajor(m)} style={{ ...pillStyle, background: major.includes(m) ? '#ff9900' : '#f0f0f0' }}>{m}</div>))}
+                      {AVAILABLE_MAJORS.map(m => {
+                        const isSelected = major.includes(m);
+                        return (
+                          <div key={m} onClick={() => toggleMajor(m)} style={{ ...pillStyle, backgroundColor: isSelected ? '#ff9900' : '#f0f0f0', border: isSelected ? '3px solid black' : '3px solid transparent' }}>
+                            {m}
+                          </div>
+                        )
+                      })}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
-                    <div style={{ flex: 1 }}><label style={labelStyle}>YEAR LEVEL</label><select value={year} onChange={e => setYear(e.target.value)} style={inputStyle}><option value={1}>1</option><option value={2}>2</option><option value={3}>3</option><option value={4}>4</option></select></div>
-                    <div style={{ flex: 1 }}><label style={labelStyle}>FIRST INTAKE</label><input required type="text" placeholder="e.g. Jan 2026" value={intake} onChange={e => setIntake(e.target.value)} style={inputStyle} /></div>
+                    <div style={{ flex: 1 }}>
+                      <label style={labelStyle}>YEAR LEVEL</label>
+                      <select value={year} onChange={e => setYear(e.target.value)} style={inputStyle}>
+                        <option value={1}>1</option><option value={2}>2</option><option value={3}>3</option><option value={4}>4</option>
+                      </select>
+                    </div>
+                    <div style={{ flex: 1.5 }}>
+                      <label style={labelStyle}>FIRST INTAKE</label>
+                      <div style={{ display: 'flex', gap: '5px' }}>
+                        <select value={intakeMonth} onChange={e => setIntakeMonth(e.target.value)} style={inputStyle}>
+                          <option value="Jan">Jan</option><option value="May">May</option><option value="Sep">Sep</option>
+                        </select>
+                        <select value={intakeYear} onChange={e => setIntakeYear(e.target.value)} style={inputStyle}>
+                          {Array.from({length: 11}, (_, i) => 2020 + i).map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                      </div>
+                    </div>
                 </div>
                 <div style={{ border: '3px solid black', padding: '15px', backgroundColor: '#f9f9f9' }}>
                     <label style={labelStyle}>SELECT AVATAR</label>
@@ -237,8 +270,20 @@ export default function Auth({ onAuthSuccess }) {
             {view === 'confirm' && (
             <form onSubmit={handleConfirm} style={formStyle}>
                 <label style={{...labelStyle, textAlign: 'center'}}>ENTER VERIFICATION CODE SENT TO EMAIL</label>
-                <input type="text" required value={code} onChange={e => setCode(e.target.value)} style={{ ...inputStyle, textAlign: 'center', fontSize: '28px', letterSpacing: '5px' }} />
-                <button type="submit" disabled={loading} style={primaryBtnStyle}>CONFIRM IDENTITY</button>
+                <input type="text" required value={code} onChange={e => setCode(e.target.value)} style={{ ...inputStyle, textAlign: 'center', fontSize: '28px', letterSpacing: '5px' }} disabled={loading} />
+                
+                {/* LOADING BAR FOR VERIFICATION */}
+                {loading && (
+                  <div style={{ width: '100%', border: '3px solid black', padding: '3px', boxSizing: 'border-box', backgroundColor: '#eee' }}>
+                    <div style={{ 
+                      width: '100%', height: '14px', backgroundColor: '#00e87f', 
+                      backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.2) 10px, rgba(0,0,0,0.2) 20px)', 
+                      animation: 'slideBg 1s linear infinite' 
+                    }}></div>
+                  </div>
+                )}
+
+                <button type="submit" disabled={loading} style={primaryBtnStyle}>{loading ? 'VERIFYING BIOMETRICS...' : 'CONFIRM IDENTITY'}</button>
                 <div style={{ textAlign: 'center', marginTop: '10px' }}><span onClick={handleResendCode} style={{ fontSize: '11px', fontWeight: '900', color: '#9b68f6', cursor: 'pointer', textDecoration: 'underline' }}>DIDN'T RECEIVE IT? RESEND CODE</span></div>
             </form>
             )}
@@ -263,7 +308,7 @@ const inputStyle = { width: '100%', padding: '12px', border: '2px solid black', 
 const pillStyle = { padding: '6px 12px', border: '2px solid black', fontSize: '11px', fontWeight: '900', cursor: 'pointer', color: 'black' };
 const primaryBtnStyle = { padding: '15px', border: '4px solid black', backgroundColor: '#3ea1f3', color: 'white', fontWeight: '900', fontSize: '14px', cursor: 'pointer', boxShadow: '5px 5px 0px black', width: '100%' };
 const overlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' };
-const popupCardStyle = { backgroundColor: 'white', border: '4px solid black', boxShadow: '12px 12px 0px #ff9900', width: '100%', maxWidth: '400px', textAlign: 'center', overflow: 'hidden' };
+const popupCardStyle = { backgroundColor: 'white', border: '4px solid black', width: '100%', maxWidth: '400px', textAlign: 'center', overflow: 'hidden' };
 const popupHeaderStyle = { color: 'white', padding: '15px', borderBottom: '4px solid black', fontWeight: '900', fontSize: '16px', letterSpacing: '2px' };
-const popupBodyStyle = { padding: '30px 20px', fontWeight: 'bold', fontSize: '14px', color: 'black', lineHeight: '1.5' };
+const popupBodyStyle = { padding: '20px', fontWeight: 'bold', fontSize: '14px', color: 'black', lineHeight: '1.5', textTransform: 'uppercase' }; 
 const popupBtnStyle = { width: '100%', padding: '15px', backgroundColor: 'black', color: 'white', fontWeight: '900', border: 'none', borderTop: '4px solid black', cursor: 'pointer', fontSize: '14px', letterSpacing: '1px' };

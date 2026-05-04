@@ -1,22 +1,53 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'aws-amplify/auth';
+import { generateClient } from 'aws-amplify/api';
 import Passport from './Passport';
 import Guide from './Guide';
 import Checkin from './Checkin';
 import Stamps from './Stamps';
 import SkillTree from './SkillTree';
 import Community from './Community';
+import Admin from './Admin';
+import Archive from './Archive';
+
+// 🛑 CUSTOM QUERY: Forces Amplify to fetch the new 'archives' field
+const CUSTOM_GET_USER = `
+  query GetUser($id: ID!) {
+    getUser(id: $id) {
+      id
+      archives
+    }
+  }
+`;
 
 export default function Dashboard({ user }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTerminated, setIsTerminated] = useState(false);
+  const [hasArchives, setHasArchives] = useState(false);
   const navigate = useNavigate();
 
   const userEmail = user?.signInDetails?.loginId || '';
   const isGroupLeader = ['34675845@student.murdoch.edu.au'].includes(userEmail);
 
-  const pages = [
+  useEffect(() => {
+    async function checkArchives() {
+      if(isGroupLeader) return; 
+      try {
+        // USING THE CUSTOM QUERY HERE
+        const res = await generateClient().graphql({ query: CUSTOM_GET_USER, variables: { id: user.userId } });
+        if (res.data.getUser?.archives) {
+          const parsed = JSON.parse(res.data.getUser.archives);
+          if (parsed.length > 0) setHasArchives(true);
+        }
+      } catch (err) { console.error(err); }
+    }
+    checkArchives();
+  }, [user.userId, isGroupLeader]);
+
+  if (isGroupLeader) return <Admin user={user} />;
+
+  let pages = [
     { id: 'profile', label: 'IDENTITY', component: <Passport user={user} onTerminated={() => setIsTerminated(true)} />, color: '#9b68f6' },
     { id: 'network', label: 'NETWORK', component: <Community />, color: '#3ea1f3' },
     { id: 'guide', label: 'GUIDE', component: <Guide />, color: '#00e87f' },
@@ -24,6 +55,10 @@ export default function Dashboard({ user }) {
     { id: 'stamps', label: 'STAMPS', component: <Stamps user={user} />, color: '#ff57f6' },
     { id: 'skills', label: 'SKILLS', component: <SkillTree tracksToShow={['Compute', 'Networking', 'Security', 'AI/ML', 'General']} />, color: '#3ea1f3' }
   ];
+
+  if (hasArchives) {
+    pages.push({ id: 'archive', label: 'ARCHIVE', component: <Archive />, color: '#666' });
+  }
 
   return (
     <div style={{ 
@@ -50,11 +85,6 @@ export default function Dashboard({ user }) {
               {p.label}
             </button>
           ))}
-          {isGroupLeader && (
-            <button onClick={() => navigate('/admin')} style={{ padding: '8px 12px', border: '2px solid white', backgroundColor: 'black', color: '#00e87f', fontWeight: '900', boxShadow: '3px 3px 0px #00e87f', cursor: 'pointer', fontSize: '11px' }}>
-              COMMAND CENTER
-            </button>
-          )}
           <button onClick={async () => { await signOut(); window.location.reload(); }} style={{ padding: '8px 12px', border: '2px solid white', backgroundColor: '#ff57f6', color: 'white', fontWeight: '900', boxShadow: '3px 3px 0px white', cursor: 'pointer', fontSize: '11px' }}>
             LOGOUT
           </button>

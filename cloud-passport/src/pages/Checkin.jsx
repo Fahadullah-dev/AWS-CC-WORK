@@ -82,12 +82,12 @@ export default function Checkin({ user }) {
       const userProfileRes = await client.graphql({ query: getUser, variables: { id: userId } });
       const userProfile = userProfileRes.data.getUser;
       
+      // NEW BATTLE PASS MATH
       const newXp = (userProfile.xp || 0) + eventData.xp_reward;
-      
       let newTier = "EXPLORER";
-      if (newXp >= 21000) newTier = "BUILDER";
-      if (newXp >= 41000) newTier = "ARCHITECT";
-      if (newXp >= 81000) newTier = "PIONEER";
+      if (newXp >= 1200) newTier = "BUILDER";
+      if (newXp >= 2600) newTier = "ARCHITECT";
+      if (newXp >= 4000) newTier = "MASTER";
 
       await Promise.all([
         client.graphql({ 
@@ -112,7 +112,7 @@ export default function Checkin({ user }) {
   <div style={{ backgroundColor: 'white', padding: '25px', color: 'black', boxSizing: 'border-box' }}>
     <h2 style={{ marginTop: 0, fontWeight: '900', fontSize: '18px', borderBottom: '4px solid black', paddingBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
       <img src="/icons/logo.svg" alt="Cloud" style={{ height: '24px', objectFit: 'contain' }} />
-        [ QR SCANNER INITIALIZATION ]
+        [ QR SCANNER ]
       </h2>
 
       <div style={{ marginTop: '20px' }}>
@@ -139,7 +139,6 @@ export default function Checkin({ user }) {
           )}
         </div>
 
-        {/* CLOSE CAMERA BUTTON */}
         {scanning && (
             <div style={{ textAlign: 'center', marginTop: '15px' }}>
               <button onClick={stopScanner}

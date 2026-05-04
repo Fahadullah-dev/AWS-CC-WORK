@@ -8,10 +8,10 @@
   "javascript": {
     "framework": "react",
     "config": {
-      "SourceDir": "cloud-passport/src",
-      "DistributionDir": "cloud-passport/dist",
+      "SourceDir": "src",
+      "DistributionDir": "dist",
       "BuildCommand": "npm run build",
-      "StartCommand": "cd cloud-passport && npm run dev"
+      "StartCommand": "npm run dev"
     }
   }
 }
