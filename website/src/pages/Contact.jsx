@@ -5,7 +5,7 @@ import { COLORS, FONTS, WEIGHT, SHADOW } from '../styles/tokens';
 
 const INSTAGRAM_LINK = 'https://www.instagram.com/murdochdubaislt/';
 const WHATSAPP_LINK = 'https://chat.whatsapp.com/E0HRAiTukmBF8KTj68pr3H?mode=gi_t';
-const MEETUP_LINK = 'https://www.meetup.com/aws-cloud-club-murdoch-university-dubai/';
+const MEETUP_LINK = 'https://www.meetup.com/aws-sbg-at-murdoch-university-dubai';
 const EMAIL_ADDRESS = '34675845@student.murdoch.edu.au';
 
 export default function Contact() {
