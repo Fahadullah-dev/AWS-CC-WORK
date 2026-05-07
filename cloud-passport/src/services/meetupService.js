@@ -1,7 +1,7 @@
-const MEETUP_GROUP = 'aws-cloud-club-murdoch-university-dubai'
+const MEETUP_GROUP = 'aws-sbg-at-murdoch-university-duba'
 const MEETUP_BASE  = `https://api.meetup.com/${MEETUP_GROUP}`
 
-export const MEETUP_GROUP_URL = `https://www.meetup.com/aws-cloud-club-at-murdoch-university-dubai/`
+export const MEETUP_GROUP_URL = `https://www.meetup.com/aws-sbg-at-murdoch-university-dubai/`
 
 export const PAST_EVENTS = []
 

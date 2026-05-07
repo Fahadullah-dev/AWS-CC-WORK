@@ -36,7 +36,7 @@ const ROADMAP = [
     stage: "STAGE 3: ADVANCED", bg: "transparent", text: COLORS.orange, align: "left", outlined: true,
     certs: [
       { name: "AWS Solutions Architect – Professional", url: "https://aws.amazon.com/certification/certified-solutions-architect-professional/" },
-      { name: "Specialty certifications", url: "https://aws.amazon.com/certification/specialty/" },
+      { name: "Specialty ertifications", url: "https://aws.amazon.com/certification/specialty/" },
     ],
     learnMore: "https://aws.amazon.com/certification/",
   },
@@ -325,8 +325,7 @@ export default function Hub() {
           <span style={s.heroBadge} data-hub="hero">STRUCTURED LEARNING</span>
           <h1 style={s.heroTitle} data-hub="hero">CLOUD LEARNING HUB</h1>
           <p style={s.heroSub} data-hub="hero">
-            Not sure where to start with AWS? we got u The Cloud Learning Hub
-            takes you from zero to certified — step by step, no stress.
+            Not sure where to start with AWS? We got you. The Cloud Learning Hub takes you from zero to certified — step by step, no stress.
           </p>
         </div>
         <div style={s.heroFrame} data-hub="hero" aria-hidden>
@@ -343,11 +342,11 @@ export default function Hub() {
         <div style={s.compareGrid} data-hub="section">
           <div style={s.compareCard(false)}>
             <h3 style={s.compareTitle}>THE OLD WAY</h3>
-            <p style={s.compareDesc}>buy hardware, wait months, pay for stuff u don't use</p>
+            <p style={s.compareDesc}>Buy hardware, wait months, pay for stuff you don't use.</p>
             <a href="#roadmap" style={s.compareLink}>LEARN MORE &#8594;</a>
           </div>
           <div style={s.compareCard(true)}>
-            <img src="https://img.icons8.com/material/480/amazon-web-services.png" width={58} height={58} alt="" style={{ display: "block", marginBottom: "4px" }} />
+            <img src="https://img.icons8.com/?size=100&id=G0CnLqqcRBXl&format=png&color=FFFFFF" width={58} height={58} alt="" style={{ display: "block", marginBottom: "4px" }} />
             <h3 style={s.compareTitle}>THE CLOUD WAY</h3>
             <p style={s.compareDesc}>Spin up what you need, pay per second, scale globally in minutes, zero hardware headaches.</p>
             <a href="https://aws.amazon.com/getting-started/" target="_blank" rel="noreferrer" style={s.compareLink}>AWS WALKTHROUGH &#8594;</a>
@@ -528,7 +527,7 @@ export default function Hub() {
           {[
             ["PEARSON VUE", "All AWS exams are administered through Pearson VUE — either at a test center or online proctored."],
             ["ONLINE OR IN-PERSON", "Take it from home with a webcam, or visit a Pearson VUE testing center near you."],
-            ["QUESTION FORMATS", "Multiple choice, multiple response, ordering, and matching. Scaled score 100–1000, most require 700+."],
+            ["QUESTION FORMATS", "Multiple-choice, multiple-response, ordering, and matching. Scaled score 100–1000, must acquire 700+."],
           ].map(([l, t]) => (
             <div key={l} style={s.examBlock}>
               <p style={s.examLabel}>{l}</p>
@@ -561,7 +560,7 @@ export default function Hub() {
               VIEW WORKSHOPS
             </Link>
             <Link to="/passport-gateway" style={s.ctaBtnOut} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.08)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
-              JOIN THE CLUB
+              JOIN THE GROUP
             </Link>
           </div>
         </div>

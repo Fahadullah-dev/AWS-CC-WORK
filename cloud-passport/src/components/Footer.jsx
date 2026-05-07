@@ -5,15 +5,15 @@ import { useBreakpoint } from "../hooks/useBreakpoint";
 import { COLORS, FONTS, WEIGHT } from "../styles/tokens";
 
 const QUICK_LINKS = [
-  { to: "/", label: "About the Club" },
+  { to: "/", label: "About the Group" },
   { to: "/events", label: "Upcoming Events" },
   { to: "/hub", label: "Learning Hub" },
-  { to: "/passport-gateway", label: "Join the Club" },
+  { to: "/passport-gateway", label: "Join the Group" },
 ];
 
 const SOCIALS = [
   {
-    href: "https://www.meetup.com/aws-cloud-club-murdoch-university-dubai/",
+    href: "https://www.meetup.com/aws-sbg-at-murdoch-university-dubai/",
     label: "MEETUP",
     icon: "https://img.icons8.com/external-tal-revivo-color-tal-revivo/96/external-meetup-app-for-hosting-in-person-events-with-similar-interests-logo-color-tal-revivo.png",
     bg: "#ED1C40",

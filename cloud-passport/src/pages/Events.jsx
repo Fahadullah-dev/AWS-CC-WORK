@@ -19,14 +19,14 @@ const REG_PROTOCOL = [
     color: COLORS.orange,
     step: "DISCOVER",
     icon: "https://img.icons8.com/fluency/48/wifi.png",
-    desc: ["Follow our insta + join the whatsapp — that's where drops happen first"],
+    desc: ["Follow our insta + join the whatsapp group — that's where drops happen first."],
   },
   {
     badge: "Step 2",
     color: COLORS.purple,
     step: "SECURE SLOT",
     icon: "https://img.icons8.com/external-tal-revivo-color-tal-revivo/48/external-meetup-app-for-hosting-in-person-events-with-similar-interests-logo-color-tal-revivo.png",
-    desc: ["Hit the ", { href: MEETUP_GROUP_URL, text: "meetup.com" }, " link and register — slots are limited, first come first served"],
+    desc: ["Hit the ", { href: MEETUP_GROUP_URL, text: "meetup.com" }, " Link and register — slots are limited, first come first serve."],
   },
   {
     badge: "Step 3",
@@ -40,7 +40,7 @@ const REG_PROTOCOL = [
     color: COLORS.black,
     step: "JOIN RAID",
     icon: "https://img.icons8.com/comic/100/today.png",
-    desc: ["Show up, scan in, eat good, build better"],
+    desc: ["Show up, scan in, eat good, build better."],
   },
 ];
 
@@ -833,8 +833,7 @@ export default function Events() {
           </h1>
         </div>
         <p style={s.heroSub} data-ev="hero">
-          What's live rn workshops. buildathons. community meetups. find your
-          next event, lock in your spot, and stack those AWS skills no cap..
+          What's live right now? Workshops, buildathons, and community meetups. Find your next event, lock in your spot, and stack those AWS skills, no cap.
         </p>
         <div style={s.heroRule} data-ev="hero" aria-hidden />
       </header>
@@ -1109,9 +1108,6 @@ export default function Events() {
           </div>
           <h2 style={s.socialTitle}>NEVER MISS A DROP</h2>
           <p style={s.socialSub}>
-            Real talk — slots go fast. the move is to turn on notifs so u never
-            miss an event drop. follow us on insta or join the whatsapp group
-            and stay locked in
           </p>
           <div style={s.socialBtns}>
             <a

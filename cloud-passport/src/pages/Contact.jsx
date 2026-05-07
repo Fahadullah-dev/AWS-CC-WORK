@@ -5,7 +5,7 @@ import { COLORS, FONTS, WEIGHT, SHADOW } from '../styles/tokens';
 
 const INSTAGRAM_LINK = 'https://www.instagram.com/murdochdubaislt/';
 const WHATSAPP_LINK = 'https://chat.whatsapp.com/E0HRAiTukmBF8KTj68pr3H?mode=gi_t';
-const MEETUP_LINK = 'https://www.meetup.com/aws-cloud-club-murdoch-university-dubai/';
+const MEETUP_LINK = 'https://www.meetup.com/aws-sbg-at-murdoch-university-dubai/';
 const EMAIL_ADDRESS = '34675845@student.murdoch.edu.au';
 
 export default function Contact() {
@@ -367,57 +367,9 @@ export default function Contact() {
 
             <div style={{ borderTop: '1px solid #ddd', margin: '16px 0' }} />
 
-            <p style={{ fontFamily: FONTS.mono, fontSize: '10px', color: COLORS.muted, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '4px', margin: '0 0 4px 0' }}>LOCATION</p>
-            <p style={{ fontFamily: FONTS.mono, fontWeight: WEIGHT.bold, fontSize: '14px', color: COLORS.black, margin: '0 0 2px 0' }}>Murdoch University Dubai</p>
+            <p style={{ fontFamily: FONTS.mono, fontWeight: WEIGHT.bold, fontSize: '12px', color: COLORS.black, marginBottom: '4px', margin: '0 0 4px 0' }}>LOCATION:</p>
+            <p style={{ fontFamily: FONTS.mono, fontSize: '13px', color: COLORS.muted, margin: '0 0 2px 0' }}>Murdoch University Dubai</p>
             <p style={{ fontFamily: FONTS.mono, fontSize: '13px', color: COLORS.muted, margin: '0 0 12px 0' }}>Dubai Knowledge Park, Block 18</p>
-
-            <p style={{ fontFamily: FONTS.mono, fontSize: '10px', color: COLORS.muted, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '4px', margin: '0 0 4px 0' }}>MEETING SPOT</p>
-            <p style={{ fontFamily: FONTS.mono, fontSize: '13px', fontWeight: WEIGHT.bold, color: COLORS.black, margin: '0 0 12px 0' }}>IT Lab 3 (Check events for schedule)</p>
-
-            <p style={{ fontFamily: FONTS.mono, fontSize: '10px', color: COLORS.muted, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '4px', margin: '0 0 4px 0' }}>EMAIL</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <a
-                href={`mailto:${EMAIL_ADDRESS}`}
-                style={{
-                  color: COLORS.orange,
-                  fontFamily: FONTS.mono,
-                  fontSize: '13px',
-                  fontWeight: WEIGHT.bold,
-                  textDecoration: 'none',
-                  borderBottom: '1px dashed orange',
-                  wordBreak: 'break-all',
-                }}
-              >
-                {EMAIL_ADDRESS}
-              </a>
-              <button
-                onClick={handleCopy}
-                title="Copy email"
-                style={{
-                  width: '28px',
-                  height: '28px',
-                  border: '1px solid #111',
-                  background: COLORS.white,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  borderRadius: 0,
-                  padding: 0,
-                }}
-              >
-                {copyState === 'copied'
-                  ? <span style={{ color: '#28CA41', fontSize: '12px', fontFamily: FONTS.mono }}>✓</span>
-                  : (
-                    <svg width="14" height="14" viewBox="0 0 16 16">
-                      <rect x="4" y="0" width="12" height="12" fill="none" stroke="#111" strokeWidth="2" />
-                      <rect x="0" y="4" width="12" height="12" fill={COLORS.white} stroke="#111" strokeWidth="2" />
-                    </svg>
-                  )
-                }
-              </button>
-            </div>
           </div>
 
           {/* CARD 2 — NETWORK NODES */}
@@ -587,7 +539,7 @@ export default function Contact() {
               marginBottom: '12px',
               margin: '0 0 12px 0',
             }}>
-              DROP US A PACKET
+              DROP AN EMAIL
             </h2>
 
             <p style={{
@@ -599,7 +551,7 @@ export default function Contact() {
               margin: '0 0 24px 0',
               lineHeight: 1.5,
             }}>
-              The fastest way to reach us. We reply within 48 hours.
+              It's the fastest way. Guarantee a reply within 48 hours.
             </p>
 
             {/* Email display box */}
@@ -766,61 +718,6 @@ export default function Contact() {
               </div>
             ))}
 
-            {/* Second dashed divider */}
-            <div style={{ borderTop: '1px dashed #ccc', margin: '24px 0 16px 0' }} />
-
-            {/* OR REACH US ON */}
-            <p style={{
-              fontFamily: FONTS.mono,
-              fontSize: '11px',
-              color: COLORS.muted,
-              textTransform: 'uppercase',
-              letterSpacing: '0.12em',
-              marginBottom: '12px',
-              textAlign: 'center',
-              margin: '0 0 12px 0',
-            }}>
-              OR REACH US ON
-            </p>
-
-            <div style={{
-              display: 'flex',
-              gap: '8px',
-              justifyContent: 'center',
-              flexWrap: 'wrap',
-            }}>
-              {[
-                { label: 'MEETUP', href: MEETUP_LINK, color: '#ED1C40', icon: 'https://img.icons8.com/fluency/48/meetup.png' },
-                { label: 'INSTAGRAM', href: INSTAGRAM_LINK, color: '#E1306C', icon: 'https://img.icons8.com/fluency/48/instagram-new.png' },
-                { label: 'WHATSAPP', href: WHATSAPP_LINK, color: '#25D366', icon: 'https://img.icons8.com/fluency/48/whatsapp.png' },
-              ].map((pill) => (
-                <a
-                  key={pill.label}
-                  href={pill.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    padding: '6px 14px',
-                    border: `2px solid ${pill.color}`,
-                    color: pill.color,
-                    background: 'transparent',
-                    fontFamily: FONTS.mono,
-                    fontSize: '12px',
-                    fontWeight: WEIGHT.bold,
-                    textTransform: 'uppercase',
-                    borderRadius: 0,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    textDecoration: 'none',
-                  }}
-                >
-                  <img src={pill.icon} width={14} height={14} alt="" style={{ display: 'block' }} />
-                  {pill.label}
-                </a>
-              ))}
-            </div>
           </div>
         </div>
       </div>

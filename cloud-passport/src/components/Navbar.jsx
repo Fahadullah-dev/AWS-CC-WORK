@@ -217,7 +217,7 @@ export default function Navbar() {
             to="/"
             id="navbar-logo-target"
             style={s.logo}
-            aria-label="AWS Cloud Club home"
+            aria-label="AWS SBG at Murdoch University Dubai home"
           >
             <img
               src="/aws-sbg-logo.png"
@@ -255,7 +255,7 @@ export default function Navbar() {
           </ul>
 
           <Link to="/passport-gateway" style={s.joinBtn}>
-            JOIN CLUB
+            JOIN GROUP
           </Link>
 
           <button
@@ -280,7 +280,7 @@ export default function Navbar() {
           </Link>
         ))}
         <Link to="/passport-gateway" style={s.drawerJoin}>
-          JOIN THE CLUB
+          JOIN THE GROUP
         </Link>
       </div>
     </>

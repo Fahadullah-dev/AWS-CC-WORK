@@ -11,7 +11,7 @@ const TEAM = [
     linkedin: "https://www.linkedin.com/in/wadiqa-baig-4706a0249/",
     github: "https://github.com/wadiqabaig",
     isCaptain: true,
-    bio: "From an AWS beginner in 2024 to your AWS SBG Leader today! I'm dedicated to helping our community thrive and proving that anyone can achieve their dreams on their own timeline..",
+    bio: "From an AWS beginner in 2024 to your AWS SBG Leader today! I'm dedicated to helping our community thrive and proving that anyone can achieve their dreams on their own timeline.",
   },
   {
     name: "Fahadullah Ahamedullah",
@@ -23,7 +23,7 @@ const TEAM = [
   },
   {
     name: "Kamilla Devetiarova",
-    role: "Head of Operations",
+    role: "Operations Coordinator",
     photo: "/team-pictures/kamilla.png",
     linkedin: "https://www.linkedin.com/in/kamilla-devetiarova-080821321/",
     github: "",
@@ -39,7 +39,7 @@ const TEAM = [
   },
   {
     name: "Mohmedbilal Mohmedaslam Madrawala",
-    role: "Director of Events & Logistics",
+    role: "Events & Logistics Manager",
     photo: "/team-pictures/bilal.png",
     linkedin: "https://www.linkedin.com/in/mohmed-bilal-madrawala-a51065362/",
     github: "",
@@ -483,7 +483,7 @@ export default function Team() {
             alt=""
             style={{ display: "block" }}
           />
-          CLUB CAPTAIN
+          GROUP LEADER
         </div>
         <article style={s.captainCard} data-team>
           <div

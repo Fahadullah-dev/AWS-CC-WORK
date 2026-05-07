@@ -10,21 +10,21 @@ const WHY_JOIN = [
     title: "LEARN CLOUD",
     bg: COLORS.purple,
     textColor: COLORS.white,
-    desc: "real AWS skills. the tools companies are literally hiring for rn",
+    desc: "Real AWS skills. The tools companies are literally hiring for right now.",
   },
   {
     icon: "https://img.icons8.com/fluency/48/console.png",
     title: "BUILD PROJECTS",
     bg: COLORS.blue,
     textColor: COLORS.white,
-    desc: "Team projects, real apps, a portfolio that slaps connect — AWS experts, industry people, and students who are on the same grind",
+    desc: "Team projects, real apps, a portfolio that hits, and more.",
   },
   {
     icon: "https://img.icons8.com/fluency/48/network.png",
     title: "NETWORK & GROW",
     bg: COLORS.white,
     textColor: COLORS.black,
-    desc: "Connect with industry professionals, AWS experts, and like-minded students at Murdoch Dubai.",
+    desc: " Connects AWS experts, industry people, and students at Murdoch Dubai who are on the same grind.",
   },
 ];
 
@@ -623,8 +623,8 @@ export default function Home() {
               </span>
             </h1>
             <p style={s.heroSub} ref={heroSubRef}>
-              learn cloud, ship real projects, and actually start your tech
-              career while you're still in uni. zero experience needed. just
+              Learn cloud, ship real projects, and actually start your tech
+              career while you are still in uni. Zero experience needed. Just
               show up curious ✦
             </p>
             <div style={s.heroBtns} ref={heroBtnsRef}>
@@ -634,7 +634,7 @@ export default function Home() {
                 onMouseEnter={(e) => hoverOn(e)}
                 onMouseLeave={(e) => hoverOff(e)}
               >
-                JOIN THE CLUB
+                JOIN THE GROUP
               </Link>
               <Link
                 to="/events"
@@ -663,12 +663,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── WHAT IS THIS CLUB? ── */}
+      {/* ── WHAT IS THIS GROUP? ── */}
       <section style={s.termSection}>
         <div style={C}>
           <div data-reveal="section">
             <h2 style={s.termTitle}>
-              {"< "}WHAT IS THIS CLUB?{" />"}
+              {"< "}WHAT IS THIS GROUP?{" />"}
             </h2>
           </div>
           <div data-reveal="section" style={s.termCard}>
@@ -676,7 +676,7 @@ export default function Home() {
               <span style={{ ...s.termDot, background: "#ff5f56" }} />
               <span style={{ ...s.termDot, background: "#ffbd2e" }} />
               <span style={{ ...s.termDot, background: "#27c93f" }} />
-              <span style={s.termLabel}>TERMINAL &middot; aws-club</span>
+              <span style={s.termLabel}>TERMINAL &middot; aws-sbg</span>
             </div>
             <div style={s.termBody}>
               <p style={s.termLine}>
@@ -690,9 +690,7 @@ export default function Home() {
               <p style={s.termLine}>
                 <span style={s.termPrompt}>&gt;</span>
                 <span>
-                  Open to any Murdoch student . Who wants to build. Workshops.
-                  Buildathons. AWS-backed events. Real skills. No experience
-                  needed.
+                  Open to any Murdoch student who wants to build workshops, buildathons, AWS-backed events, and real skills. No experience needed.
                 </span>
               </p>
               <p style={s.termLine}>
@@ -754,7 +752,7 @@ export default function Home() {
         <div style={C}>
           <div data-reveal="section" style={s.journeyMeta}>
             <span style={s.journeyBig(false)}>THE</span>
-            <span style={s.journeyBig(false)}>SEMESTER</span>
+            <span style={s.journeyBig(false)}>TRIMESTER</span>
             <span style={s.journeyBig(true)}>JOURNEY</span>
             <p style={s.journeySub}>
               Here is what you can expect when you sign up for the ride.
@@ -792,7 +790,7 @@ export default function Home() {
         <div style={s.ctaInner} data-reveal="cta">
           <h2 style={s.ctaH2}>READY TO START BUILDING?</h2>
           <p style={s.ctaSub}>
-            Join the AWS Student Builder Group Get access to events, the
+            Join the AWS Student Builder Group, and get access to events, the
             learning hub, and a community that's genuinely doing things.
           </p>
           <div style={s.ctaBtns}>
@@ -808,7 +806,7 @@ export default function Home() {
                 e.currentTarget.style.boxShadow = "4px 4px 0 rgba(0,0,0,0.4)";
               }}
             >
-              JOIN THE CLUB NOW
+              JOIN THE GROUP NOW
             </Link>
             {/* CHANGED THIS TO LINK DIRECTLY TO THE /learningHub ROUTE */}
             <Link

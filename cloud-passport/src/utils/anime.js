@@ -1,2 +1,1 @@
-import anime from 'animejs'
-export default anime
+export default window.anime;

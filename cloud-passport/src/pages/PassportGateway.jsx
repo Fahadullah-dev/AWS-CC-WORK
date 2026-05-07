@@ -26,10 +26,10 @@ const FEATURES = [
 ];
 
 const BADGE_ICONS = [
-  { src: "https://img.icons8.com/fluency/48/bucket.png",        label: "S3 Starter" },
+  { src: "https://img.icons8.com/?size=100&id=jmtjOhZIjw13&format=png&color=000000",        label: "S3 Starter" },
   { src: "https://img.icons8.com/fluency/48/lightning-bolt.png", label: "Lambda Runner" },
   { src: "https://img.icons8.com/fluency/48/compass.png",        label: "VPC Navigator" },
-  { src: "https://img.icons8.com/fluency/48/globe.png",          label: "CloudFront Speed" },
+  { src: "https://img.icons8.com/?size=100&id=42809&format=png&color=000000",          label: "CloudFront Speed" },
 ];
 
 export default function PassportGateway() {
@@ -223,24 +223,13 @@ export default function PassportGateway() {
           <div ref={heroSubRef} style={s.heroSub}>
             Your official ID for the AWS Student Builder Group. Track your progress, earn XP for attending events, unlock exclusive badges, and level up your cloud skills as you build.
           </div>
-          <div ref={heroBtnsRef} style={s.heroBtns}>
-            {/* CHANGED THIS TO LINK DIRECTLY TO THE PASSPORT APP */}
-            <Link
-              to="/epassport" style={s.ctaPrimary}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = "translate(-2px,-2px)"; e.currentTarget.style.boxShadow = "6px 6px 0 #111"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = SHADOW.card; }}
-            >
-              <img src="https://img.icons8.com/fluency/48/id-verified.png" width={18} height={18} alt="" style={{ display: "block" }} />
-              INITIALIZE PASSPORT
-            </Link>
-          </div>
         </div>
 
         <div ref={cardRef} style={s.cardWrap} aria-hidden>
           <div style={s.passportCard}>
             <div style={s.cardTop}>
               <div style={s.cardAvatar}>
-                <img src="https://img.icons8.com/fluency/48/developer.png" width={36} height={36} alt="Player" style={{ display: "block" }} />
+                <img src="https://img.icons8.com/?size=100&id=1l4Ua9PN0EDB&format=png&color=000000" width={36} height={36} alt="Player" style={{ display: "block" }} />
               </div>
               <div>
                 <div style={s.cardName}>PLAYER ONE</div>
