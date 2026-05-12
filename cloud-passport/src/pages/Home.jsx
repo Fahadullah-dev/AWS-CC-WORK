@@ -613,7 +613,7 @@ export default function Home() {
                 FUTURE
               </span>
               <span data-word style={{ display: "block", opacity: 0 }}>
-                AND UR
+                AND YOU'RE
               </span>
               <span
                 data-word
