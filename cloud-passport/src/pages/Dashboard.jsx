@@ -11,7 +11,6 @@ import Community from './Community';
 import Admin from './Admin';
 import Archive from './Archive';
 
-// 🛑 CUSTOM QUERY: Forces Amplify to fetch the new 'archives' field
 const CUSTOM_GET_USER = `
   query GetUser($id: ID!) {
     getUser(id: $id) {
@@ -34,7 +33,6 @@ export default function Dashboard({ user }) {
     async function checkArchives() {
       if(isGroupLeader) return; 
       try {
-        // USING THE CUSTOM QUERY HERE
         const res = await generateClient().graphql({ query: CUSTOM_GET_USER, variables: { id: user.userId } });
         if (res.data.getUser?.archives) {
           const parsed = JSON.parse(res.data.getUser.archives);
@@ -85,7 +83,10 @@ export default function Dashboard({ user }) {
               {p.label}
             </button>
           ))}
-          <button onClick={async () => { await signOut(); window.location.reload(); }} style={{ padding: '8px 12px', border: '2px solid white', backgroundColor: '#ff57f6', color: 'white', fontWeight: '900', boxShadow: '3px 3px 0px white', cursor: 'pointer', fontSize: '11px' }}>
+          <button onClick={() => navigate('/home')} style={{ padding: '8px 12px', border: '2px solid white', backgroundColor: 'black', color: 'white', fontWeight: '900', boxShadow: '3px 3px 0px white', cursor: 'pointer', fontSize: '11px' }}>
+            BACK TO WEBSITE
+          </button>
+          <button onClick={async () => { await signOut(); window.location.reload(); }} style={{ padding: '8px 12px', border: '2px solid white', backgroundColor: '#ef4444', color: 'white', fontWeight: '900', boxShadow: '3px 3px 0px white', cursor: 'pointer', fontSize: '11px' }}>
             LOGOUT
           </button>
         </div>

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/api';
 import { getCurrentUser, deleteUser as deleteCognitoUser, signOut } from 'aws-amplify/auth';
-import { getUser, listAttendances } from '../graphql/queries';
+import { getUser } from '../graphql/queries';
 import { createUser, updateUser, deleteUser as deleteDBUser } from '../graphql/mutations';
 
-const AVAILABLE_MAJORS = ['AI', 'CS', 'Cyber', 'BIS', 'Game Dev'];
+const IT_MAJORS = ['AI', 'CS', 'Cyber', 'BIS', 'Game Dev'];
+const NON_IT_MAJORS = ['Psychology', 'Business', 'Criminology', 'Communication'];
+
 const AVATAR_PRESETS = [
   "/avatars/pfp1.jpg", "/avatars/pfp2.jpg", "/avatars/pfp3.jpg", "/avatars/pfp4.jpg", "/avatars/pfp5.jpg",
   "/avatars/pfp6.jpg", "/avatars/pfp7.jpg", "/avatars/pfp8.jpg", "/avatars/pfp9.jpg", "/avatars/pfp10.jpg"
@@ -25,6 +27,7 @@ export default function Passport({ onTerminated }) {
   const [userId, setUserId] = useState(null);
   const [form, setForm] = useState({ full_name: '', major: [], year: 1, intake: '', avatar_url: '' });
   
+  const [showOtherMajors, setShowOtherMajors] = useState(false);
   const [isTerminated, setIsTerminated] = useState(false);
   const [showDeletePopup, setShowDeletePopup] = useState(false);
   const [errorPopup, setErrorPopup] = useState(null);
@@ -38,14 +41,10 @@ export default function Passport({ onTerminated }) {
       setUserId(userId);
       setUserEmail(signInDetails?.loginId);
       
-      const [userRes, attendanceRes] = await Promise.all([
-        client.graphql({ query: getUser, variables: { id: userId } }),
-        client.graphql({ query: listAttendances, variables: { filter: { userID: { eq: userId } } } })
-      ]);
+      const userRes = await client.graphql({ query: getUser, variables: { id: userId } });
       
       if (userRes.data.getUser) {
         let userData = userRes.data.getUser;
-        
         if (userData.major) {
           userData.major = userData.major.map(m => {
             if (m === 'Computer Science') return 'CS';
@@ -53,13 +52,15 @@ export default function Passport({ onTerminated }) {
             if (m === 'Business Information Systems') return 'BIS';
             return m;
           });
+          
+          if (userData.major.some(m => NON_IT_MAJORS.includes(m))) {
+            setShowOtherMajors(true);
+          }
         }
-
         setProfile(userData);
         setForm(userData);
       } else { 
-        setIsTerminated(true);
-        if (onTerminated) onTerminated();
+        setIsEditing(true);
       }
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }
@@ -68,6 +69,8 @@ export default function Passport({ onTerminated }) {
     setForm(prev => {
       const currentMajors = prev.major || [];
       const isSelected = currentMajors.includes(m);
+      
+      // If clicking something already selected, just deselect it
       if (isSelected) {
         if (currentMajors.length <= 1) {
           setErrorPopup("AT LEAST 1 MAJOR IS REQUIRED.");
@@ -75,11 +78,34 @@ export default function Passport({ onTerminated }) {
         }
         return { ...prev, major: currentMajors.filter(x => x !== m) };
       }
-      if (currentMajors.length >= 2) { 
-        setErrorPopup("MAXIMUM 2 MAJORS ALLOWED PER PASSPORT."); 
-        return prev; 
+      
+      const isClickedNonIT = NON_IT_MAJORS.includes(m);
+      const isClickedIT = IT_MAJORS.includes(m);
+
+      // RULE 1: If picking a Non-IT major, it replaces everything. Only 1 allowed.
+      if (isClickedNonIT) {
+        return { ...prev, major: [m] };
       }
-      return { ...prev, major: [...currentMajors, m] };
+
+      // RULE 2: If picking an IT major...
+      if (isClickedIT) {
+        const hasNonIT = currentMajors.some(existing => NON_IT_MAJORS.includes(existing));
+        
+        // ...and they currently have a Non-IT major, wipe it and select the IT major.
+        if (hasNonIT) {
+          return { ...prev, major: [m] };
+        }
+        
+        // ...otherwise, strictly enforce the max 2 limit for IT majors.
+        if (currentMajors.length >= 2) { 
+          setErrorPopup("MAXIMUM 2 MAJORS ALLOWED PER PASSPORT."); 
+          return prev; 
+        }
+        
+        return { ...prev, major: [...currentMajors, m] };
+      }
+
+      return prev;
     });
   };
 
@@ -149,13 +175,8 @@ export default function Passport({ onTerminated }) {
       <div style={{ backgroundColor: '#1a1c21', padding: '40px 20px', color: 'white', textAlign: 'center', border: '4px solid #ff57f6', boxSizing: 'border-box' }}>
         <h2 style={{ color: '#ff57f6', fontWeight: '900', fontSize: '22px', letterSpacing: '1px', textTransform: 'uppercase' }}>[ ACCESS REVOKED ]</h2>
         <p style={{ fontWeight: 'bold', lineHeight: '1.6', margin: '20px 0', fontSize: '14px' }}>
-          Your builder identity has been permanently deleting from the AWS Student Builder Group registry. 
+          Your builder identity has been permanently deleted from the AWS Student Builder Group registry. 
         </p>
-        <p style={{ fontWeight: 'bold', lineHeight: '1.6', margin: '20px 0', fontSize: '14px' }}>
-          Please send an email to <br/>
-          <a href="mailto:34675845@student.murdoch.edu.au" style={{ color: '#00e87f', textDecoration: 'underline', wordBreak: 'break-all' }}>34675845@student.murdoch.edu.au</a>
-        </p>
-        <p style={{ fontSize: '12px', color: '#aaa', marginBottom: '30px' }}>ERROR CODE: GHOST RECORD DETECTED</p>
         <button onClick={async () => { await signOut(); window.location.reload(); }} style={{ padding: '15px 20px', backgroundColor: '#ff57f6', color: 'white', fontWeight: '900', border: 'none', cursor: 'pointer', width: '100%' }}>
           SEVER CONNECTION
         </button>
@@ -163,7 +184,6 @@ export default function Passport({ onTerminated }) {
     );
   }
 
-  // --- NEW LEVEL LOGIC: 1 Level = 200 XP ---
   const currentTotalXp = profile?.xp || 0;
   const currentLevel = Math.floor(currentTotalXp / 200) + 1;
   const xpTowardsNextLevel = currentTotalXp % 200;
@@ -179,9 +199,7 @@ export default function Passport({ onTerminated }) {
       {errorPopup && (
         <div style={overlayStyle} onClick={() => setErrorPopup(null)}>
           <div style={{...popupCardStyle, boxShadow: '12px 12px 0px #ef4444'}} onClick={e => e.stopPropagation()}>
-            <div style={{ ...popupHeaderStyle, backgroundColor: '#ef4444' }}>
-              [ SYSTEM ERROR ]
-            </div>
+            <div style={{ ...popupHeaderStyle, backgroundColor: '#ef4444' }}>[ SYSTEM ERROR ]</div>
             <div style={popupBodyStyle}>{errorPopup}</div>
             <button onClick={() => setErrorPopup(null)} style={{...popupBtnStyle, backgroundColor: 'black', color: 'white', width: '100%'}}>ACKNOWLEDGE</button>
           </div>
@@ -191,9 +209,7 @@ export default function Passport({ onTerminated }) {
       {showDeletePopup && (
         <div style={overlayStyle} onClick={() => setShowDeletePopup(false)}>
           <div style={popupCardStyle} onClick={e => e.stopPropagation()}>
-            <div style={{ ...popupHeaderStyle, backgroundColor: '#ef4444' }}>
-              [ SYSTEM WARNING ]
-            </div>
+            <div style={{ ...popupHeaderStyle, backgroundColor: '#ef4444' }}>[ SYSTEM WARNING ]</div>
             <div style={popupBodyStyle}>
               <h3 style={{ margin: '0 0 10px 0', color: '#ef4444', fontSize: '18px', fontWeight: '900' }}>CRITICAL ACTION</h3>
               <p style={{ margin: 0 }}>You are about to permanently delete your builder identity. <strong>All XP, stamps, and networking data will be lost forever.</strong></p>
@@ -210,26 +226,39 @@ export default function Passport({ onTerminated }) {
          <div style={{ padding: '25px', boxSizing: 'border-box' }}>
          <h3 style={{ marginTop: 0, fontWeight: '900', fontSize: '18px', borderBottom: '4px solid black', paddingBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
            <img src="/icons/logo.svg" alt="Cloud" style={{ height: '24px', objectFit: 'contain' }} />
-           [ EDIT IDENTITY ]
+           [ {profile ? 'EDIT IDENTITY' : 'INITIALIZE PASSPORT'} ]
          </h3>
          <form onSubmit={saveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '20px' }}>
            <div><label style={editLabel}>FULL NAME</label><input required value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} style={editInput} /></div>
+           
            <div>
              <label style={editLabel}>MAJORS (MAX 2)</label>
              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-               {AVAILABLE_MAJORS.map(m => {
+               {IT_MAJORS.map(m => {
                  const isSelected = (form.major || []).includes(m);
                  return (
-                   <div key={m} onClick={() => toggleMajor(m)} style={{ ...pillStyle, backgroundColor: isSelected ? '#ff9900' : '#eee', border: isSelected ? '3px solid black' : '3px solid transparent' }}>
-                     {m}
-                   </div>
+                   <div key={m} onClick={() => toggleMajor(m)} style={{ ...pillStyle, backgroundColor: isSelected ? '#ff9900' : '#eee', border: isSelected ? '3px solid black' : '3px solid transparent' }}>{m}</div>
                  );
                })}
+               <div onClick={() => setShowOtherMajors(!showOtherMajors)} style={{ ...pillStyle, backgroundColor: showOtherMajors ? '#3ea1f3' : '#eee', border: '3px solid black', color: showOtherMajors ? 'white' : 'black' }}>
+                 {showOtherMajors ? '- HIDE OTHERS' : '+ OTHERS'}
+               </div>
              </div>
+
+             {showOtherMajors && (
+               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px', padding: '12px', border: '3px dashed #ccc', backgroundColor: '#fafafa' }}>
+                 {NON_IT_MAJORS.map(m => {
+                   const isSelected = (form.major || []).includes(m);
+                   return (
+                     <div key={m} onClick={() => toggleMajor(m)} style={{ ...pillStyle, backgroundColor: isSelected ? '#ff9900' : '#eee', border: isSelected ? '3px solid black' : '3px solid transparent' }}>{m}</div>
+                   );
+                 })}
+               </div>
+             )}
            </div>
+
            <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
              <div style={{flex: '1 1 100px'}}><label style={editLabel}>YEAR LEVEL</label><select value={form.year} onChange={e => setForm({...form, year: e.target.value})} style={editInput}><option value={1}>1</option><option value={2}>2</option><option value={3}>3</option><option value={4}>4</option></select></div>
-             
              <div style={{flex: '1 1 150px'}}>
                <label style={editLabel}>FIRST INTAKE</label>
                <div style={{ display: 'flex', gap: '5px' }}>
@@ -241,10 +270,10 @@ export default function Passport({ onTerminated }) {
                  </select>
                </div>
              </div>
-
            </div>
+           
            <div style={{ border: '3px solid black', padding: '15px', backgroundColor: '#f9f9f9' }}>
-             <label style={editLabel}>SELECT AVATAR</label>
+             <label style={editLabel}>SELECT PROFILE PICTURE</label>
              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px', marginBottom: '15px' }}>
                {AVATAR_PRESETS.map(url => ( 
                  <img key={url} src={url} onClick={() => setForm({...form, avatar_url: url})} style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', border: form.avatar_url === url ? '4px solid #3ea1f3' : '2px solid black', cursor: 'pointer', backgroundColor: 'white' }} /> 
@@ -253,14 +282,15 @@ export default function Passport({ onTerminated }) {
              <div style={{ textAlign: 'center' }}>
                  <label style={uploadBtnStyle}>
                    <img src="/icons/upload.png" style={{ width: '30px', marginRight: '5px', verticalAlign: 'middle' }} alt="upload" />
-                   UPLOAD CUSTOM ASSET
+                   UPLOAD CUSTOM PHOTO
                    <input type="file" accept="image/*" onChange={handleFileUpload} style={{ display: 'none' }} />
                  </label>
              </div>
            </div>
+           
            <div style={{ display: 'flex', gap: '10px' }}>
-             <button type="submit" style={{ ...protoBtn, backgroundColor: '#3ea1f3', color: 'white', flex: 2 }}>SAVE IDENTITY</button>
-             <button type="button" onClick={() => setIsEditing(false)} style={{ ...protoBtn, backgroundColor: 'white', flex: 1 }}>CANCEL</button>
+             <button type="submit" style={{ ...protoBtn, backgroundColor: '#3ea1f3', color: 'white', flex: 2 }}>{profile ? 'SAVE IDENTITY' : 'CREATE PASSPORT'}</button>
+             {profile && <button type="button" onClick={() => setIsEditing(false)} style={{ ...protoBtn, backgroundColor: 'white', flex: 1 }}>CANCEL</button>}
            </div>
          </form>
        </div>
@@ -280,7 +310,7 @@ export default function Passport({ onTerminated }) {
           <div style={{ padding: '20px', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', gap: '15px', marginBottom: '25px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
               <div style={{ border: '4px solid black', padding: '6px', backgroundColor: 'white', boxShadow: '4px 4px 0px #3ea1f3', position: 'relative', minWidth: '100px' }}>
-                <img src={profile?.avatar_url} style={{ width: '100px', height: '100px', display: 'block', backgroundColor: 'white', objectFit: 'cover' }} alt="Avatar" />
+                <img src={profile?.avatar_url || '/icons/speaker.svg'} style={{ width: '100px', height: '100px', display: 'block', backgroundColor: 'white', objectFit: 'cover' }} alt="Avatar" />
                 <div style={screwStyle({top: '4px', left: '4px'})}></div><div style={screwStyle({top: '4px', right: '4px'})}></div><div style={screwStyle({bottom: '4px', left: '4px'})}></div><div style={screwStyle({bottom: '4px', right: '4px'})}></div>
               </div>
               
