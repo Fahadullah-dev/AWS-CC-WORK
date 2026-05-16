@@ -12,20 +12,21 @@ const INSTAGRAM_LINK = "https://www.instagram.com/murdochdubaislt/";
 const WHATSAPP_LINK = "https://chat.whatsapp.com/E0HRAiTukmBF8KTj68pr3H";
 
 // --- PAST EVENTS DATA ---
+// --- PAST EVENTS DATA ---
 const PAST_EVENTS = [
   {
     id: "event-01",
     monthLabel: "MAY 2026", 
     dayName: "THU",
     dayNum: "14",
-    name: "AWS SBG Launch Day",
+    name: "AWS SBG LAUNCH DAY",
     location: "Murdoch University Dubai, Dubai Knowledge Park",
     description: "Our first launch event! We officially launched the AWS Student Builder Group, introduced the E-Passport system, and scanned our very first builders into the network.",
     tags: ["LAUNCH", "NETWORKING", "PASSPORT"],
     images: [
-      "/event/event1/IMG_9288%202%20Large.jpeg",
+      "/event/event1/IMG_9319.jpg",
+      "/event/event1/IMG_9288.png",
       "/event/event1/IMG_9280.jpg",
-      "/event/event1/IMG_9319%20Large.jpeg",
       "/event/event1/IMG_9358.jpg"
     ],
     reelLink: "https://www.instagram.com/murdochdubaislt/reel/DYXDZeDsXML/",
