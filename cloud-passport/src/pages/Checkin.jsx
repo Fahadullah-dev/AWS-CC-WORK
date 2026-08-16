@@ -4,11 +4,26 @@ import { generateClient } from 'aws-amplify/api';
 import { createAttendance, updateUser } from '../graphql/mutations';
 import { getEvent, getUser, listAttendances } from '../graphql/queries';
 
+const CUSTOM_GET_USER = `
+  query GetUser($id: ID!) {
+    getUser(id: $id) {
+      id xp tier xp_history
+    }
+  }
+`;
+
+const CUSTOM_UPDATE_USER = `
+  mutation UpdateUser($input: UpdateUserInput!) {
+    updateUser(input: $input) { id }
+  }
+`;
+
 export default function Checkin({ user }) {
   const client = generateClient();
   const [scanning, setScanning] = useState(false);
   const [scanStatus, setScanStatus] = useState('SENSORS OFFLINE');
   const scannerRef = useRef(null);
+  const isProcessingRef = useRef(false); // THE LOCK TO PREVENT MULTIPLE SCANS
   
   const userId = user?.userId;
 
@@ -20,7 +35,6 @@ export default function Checkin({ user }) {
         { facingMode: "environment" }, 
         { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText) => {
-          stopScanner();
           processScannedCode(decodedText);
         },
         (errorMessage) => { /* Silently ignore read errors while aiming */ }
@@ -44,9 +58,12 @@ export default function Checkin({ user }) {
     }
     setScanning(false);
     setScanStatus('SENSORS OFFLINE');
+    isProcessingRef.current = false;
   };
 
   async function processScannedCode(text) {
+    if (isProcessingRef.current) return; // IF ALREADY PROCESSING, IGNORE THIS SCAN!
+    isProcessingRef.current = true; 
     setScanStatus("ANALYZING PAYLOAD...");
     
     try {
@@ -55,7 +72,7 @@ export default function Checkin({ user }) {
       const timeDifference = currentTime - data.timestamp;
 
       if (timeDifference > 15000) {
-        setScanStatus("CODE EXPIRED: RE-SCAN PROJECTOR");
+        setScanStatus("ERROR: CODE EXPIRED. RE-SCAN PROJECTOR");
         return;
       }
 
@@ -79,15 +96,21 @@ export default function Checkin({ user }) {
         return;
       }
 
-      const userProfileRes = await client.graphql({ query: getUser, variables: { id: userId } });
+      const userProfileRes = await client.graphql({ query: CUSTOM_GET_USER, variables: { id: userId } });
       const userProfile = userProfileRes.data.getUser;
       
-      // NEW BATTLE PASS MATH
       const newXp = (userProfile.xp || 0) + eventData.xp_reward;
       let newTier = "EXPLORER";
       if (newXp >= 1200) newTier = "BUILDER";
       if (newXp >= 2600) newTier = "ARCHITECT";
       if (newXp >= 4000) newTier = "MASTER";
+
+      const history = userProfile.xp_history ? JSON.parse(userProfile.xp_history) : [];
+      history.push({
+        date: new Date().toISOString(),
+        reason: `Event: ${eventData.name}`,
+        amount: eventData.xp_reward
+      });
 
       await Promise.all([
         client.graphql({ 
@@ -95,8 +118,8 @@ export default function Checkin({ user }) {
           variables: { input: { eventID: data.eventId, userID: userId } } 
         }),
         client.graphql({
-          query: updateUser,
-          variables: { input: { id: userId, xp: newXp, tier: newTier } }
+          query: CUSTOM_UPDATE_USER,
+          variables: { input: { id: userId, xp: newXp, tier: newTier, xp_history: JSON.stringify(history) } }
         })
       ]);
 
@@ -109,7 +132,21 @@ export default function Checkin({ user }) {
   }
 
   return (
-  <div style={{ backgroundColor: 'white', padding: '25px', color: 'black', boxSizing: 'border-box' }}>
+  <div style={{ backgroundColor: 'white', padding: '25px', color: 'black', boxSizing: 'border-box', position: 'relative' }}>
+
+    {scanStatus !== 'SENSORS OFFLINE' && !scanStatus.includes('CALIBRATING') && (
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 9999, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+        <h1 style={{ color: scanStatus.includes('SUCCESS') ? '#10b981' : scanStatus.includes('ERROR') ? '#ef4444' : '#ff9900', textAlign: 'center', fontSize: '32px', fontWeight: '900', textTransform: 'uppercase', marginBottom: '40px', wordWrap: 'break-word', maxWidth: '800px' }}>
+          {scanStatus}
+        </h1>
+        {(scanStatus.includes('SUCCESS') || scanStatus.includes('ERROR')) && (
+          <button onClick={stopScanner} style={{ padding: '20px 40px', backgroundColor: 'white', color: 'black', fontSize: '18px', fontWeight: '900', border: '4px solid black', cursor: 'pointer', boxShadow: '8px 8px 0px #3ea1f3' }}>
+            DISMISS AND RETURN
+          </button>
+        )}
+      </div>
+    )}
+
     <h2 style={{ marginTop: 0, fontWeight: '900', fontSize: '18px', borderBottom: '4px solid black', paddingBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
       <img src="/icons/logo.svg" alt="Cloud" style={{ height: '24px', objectFit: 'contain' }} />
         [ QR SCANNER ]
@@ -143,14 +180,10 @@ export default function Checkin({ user }) {
             <div style={{ textAlign: 'center', marginTop: '15px' }}>
               <button onClick={stopScanner}
                 style={{ backgroundColor: '#ef4444', color: 'white', border: '3px solid black', padding: '10px 20px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', boxShadow: '4px 4px 0px black' }}>
-                CLOSE CAMERA
+                CANCEL SCAN
               </button>
             </div>
         )}
-
-        <div style={{ marginTop: '20px', padding: '12px', backgroundColor: scanStatus.includes('SUCCESS') ? '#10b981' : scanStatus.includes('ERROR') || scanStatus.includes('EXPIRED') ? '#ef4444' : '#f0f0f0', border: '3px solid black', color: scanStatus.includes('SUCCESS') || scanStatus.includes('ERROR') || scanStatus.includes('EXPIRED') ? 'white' : 'black', textAlign: 'center', fontWeight: '900', fontSize: '11px', letterSpacing: '1px', wordWrap: 'break-word' }}>
-          STATUS: {scanStatus}
-        </div>
       </div>
     </div>
   );

@@ -22,7 +22,7 @@ export default function PassportCard() {
       <div style={{ position: 'absolute', bottom: '-20px', right: '-20px', width: '100px', height: '100px', background: 'var(--neon-blue)', filter: 'blur(40px)', borderRadius: '50%', zIndex: 0 }}></div>
 
       <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-        <h2 style={{ margin: '0 0 5px 0', color: 'var(--aws-orange)' }}>AWS Cloud Club</h2>
+        <h2 style={{ margin: '0 0 5px 0', color: 'var(--aws-orange)' }}>AWS SBG at Murdoch University Dubai</h2>
         <p style={{ fontSize: '12px', color: '#aaa', margin: '0 0 20px 0' }}>Official E-Passport</p>
         
         <div style={{ fontSize: '64px', margin: '10px 0' }}>{profile.avatar}</div>
