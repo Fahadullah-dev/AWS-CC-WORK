@@ -3,7 +3,7 @@ import QRCode from 'qrcode';
 import { signOut } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/api';
 import { listEvents, listAttendances } from '../graphql/queries'; 
-import { createEvent, deleteEvent, updateEvent, deleteUser as deleteDBUser } from '../graphql/mutations';
+import { createEvent, deleteEvent, updateEvent, deleteUser as deleteDBUser, createAttendance } from '../graphql/mutations';
 import Passport from './Passport';
 
 const CAPTAIN_EMAILS = ['34675845@student.murdoch.edu.au'];
@@ -12,7 +12,7 @@ const CUSTOM_LIST_USERS = `
   query ListUsers {
     listUsers(limit: 1000) {
       items {
-        id full_name email major intake member_id xp tier createdAt archives
+        id full_name email major intake member_id xp tier createdAt archives avatar_url xp_history
       }
     }
   }
@@ -40,8 +40,11 @@ export default function Admin({ user }) {
   const [form, setForm] = useState({ id: null, name: '', track: 'Compute', xp_reward: 150, unlocked_skills: '', emoji: '' });
   const [isEditing, setIsEditing] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [expandedUser, setExpandedUser] = useState(null);
   
-  const [pointsToAdd, setPointsToAdd] = useState(100);
+  // Override States
+  const [pointsToAdd, setPointsToAdd] = useState('');
+  const [manualReason, setManualReason] = useState('');
   const [resetTrimesterName, setResetTrimesterName] = useState('');
 
   const [qrDataUrl, setQrDataUrl] = useState('');
@@ -71,7 +74,6 @@ export default function Admin({ user }) {
     setLoading(false);
   }
 
-  // --- FULL ARCHIVE & RESET ENGINE ---
   async function handleResetAllXP() {
     if(!resetTrimesterName) return alert("SYSTEM HALTED: Enter a Trimester Name (e.g. 'Jan 2026') to store the archive before resetting.");
     if(!window.confirm(`⚠️ EXTREME DANGER: Did you download the CSV export first? This will archive all records as "${resetTrimesterName}" and WIPE all current XP and Stamps to 0.`)) return;
@@ -81,7 +83,6 @@ export default function Admin({ user }) {
     try {
       const client = generateClient();
 
-      // 1. Snapshot and Update Users
       for (const u of users) {
         const userAtts = attendances.filter(a => a.userID === u.id);
         
@@ -109,18 +110,17 @@ export default function Admin({ user }) {
                 id: u.id, 
                 xp: 0, 
                 tier: "EXPLORER", 
-                archives: JSON.stringify(currentArchives) 
+                archives: JSON.stringify(currentArchives),
+                xp_history: "[]"
               } 
             }
         });
       }
 
-      // 2. Wipe all Attendances
       for (const a of attendances) {
         await client.graphql({ query: RAW_DELETE_ATTENDANCE, variables: { input: { id: a.id } } });
       }
 
-      // 3. WIPE ALL EVENTS (This clears the Stamp Board for everyone!)
       for (const e of events) {
         await client.graphql({ query: deleteEvent, variables: { input: { id: e.id } } });
       }
@@ -208,21 +208,99 @@ export default function Admin({ user }) {
     setProcessing(false);
   }
 
-  async function addXpManually(targetUser) {
-    if(!pointsToAdd || pointsToAdd <= 0) return alert("ENTER A VALID XP AMOUNT");
+  // --- NEW OVERRIDE FUNCTIONS ---
+  async function handleXPOverride(targetUser, isAdding) {
+    if (!pointsToAdd || pointsToAdd <= 0) return alert("ENTER A VALID XP AMOUNT");
+    if (!manualReason) return alert("ENTER A REASON FOR LOGGING XP");
+
     setProcessing(true);
     try {
       const client = generateClient();
-      const newXp = (targetUser.xp || 0) + parseInt(pointsToAdd);
+      const xpChange = isAdding ? parseInt(pointsToAdd) : -parseInt(pointsToAdd);
+      const newXp = Math.max(0, (targetUser.xp || 0) + xpChange); 
+      
       let newTier = "EXPLORER";
       if (newXp >= 1200) newTier = "BUILDER";
       if (newXp >= 2600) newTier = "ARCHITECT";
       if (newXp >= 4000) newTier = "MASTER";
 
-      await client.graphql({ query: CUSTOM_UPDATE_USER, variables: { input: { id: targetUser.id, xp: newXp, tier: newTier } } });
-      alert(`SUCCESS: Added ${pointsToAdd} XP to ${targetUser.full_name}`);
+      const history = targetUser.xp_history ? JSON.parse(targetUser.xp_history) : [];
+      history.push({
+        date: new Date().toISOString(),
+        reason: `ADMIN OVERRIDE: ${manualReason}`,
+        amount: xpChange
+      });
+
+      await client.graphql({ query: CUSTOM_UPDATE_USER, variables: { input: { id: targetUser.id, xp: newXp, tier: newTier, xp_history: JSON.stringify(history) } } });
+      alert(`SUCCESS: ${isAdding ? 'Added' : 'Deducted'} ${pointsToAdd} XP ${isAdding ? 'to' : 'from'} ${targetUser.full_name}`);
+      setPointsToAdd('');
+      setManualReason('');
       await fetchData();
-    } catch (err) { alert("OVERRIDE FAILED."); } finally { setProcessing(false); }
+    } catch (err) { alert("OVERRIDE FAILED."); console.error(err); } finally { setProcessing(false); }
+  }
+
+  async function handleGrantEvent(targetUser, eventId) {
+    if (!eventId) return alert("SELECT AN EVENT TO GRANT");
+
+    const alreadyAttended = attendances.some(a => a.userID === targetUser.id && a.eventID === eventId);
+    if (alreadyAttended) return alert("STUDENT ALREADY HAS THIS BADGE.");
+
+    setProcessing(true);
+    try {
+      const client = generateClient();
+      const eventData = events.find(e => e.id === eventId);
+
+      const newXp = (targetUser.xp || 0) + (eventData?.xp_reward || 0);
+      let newTier = "EXPLORER";
+      if (newXp >= 1200) newTier = "BUILDER";
+      if (newXp >= 2600) newTier = "ARCHITECT";
+      if (newXp >= 4000) newTier = "MASTER";
+
+      const history = targetUser.xp_history ? JSON.parse(targetUser.xp_history) : [];
+      history.push({
+        date: new Date().toISOString(),
+        reason: `ADMIN GRANTED EVENT: ${eventData?.name}`,
+        amount: eventData?.xp_reward || 0
+      });
+
+      await Promise.all([
+        client.graphql({ query: createAttendance, variables: { input: { eventID: eventId, userID: targetUser.id } } }),
+        client.graphql({ query: CUSTOM_UPDATE_USER, variables: { input: { id: targetUser.id, xp: newXp, tier: newTier, xp_history: JSON.stringify(history) } } })
+      ]);
+
+      alert(`SUCCESS: Granted ${eventData?.name} badge to ${targetUser.full_name}`);
+      await fetchData();
+    } catch (err) { alert("GRANT FAILED."); console.error(err); } finally { setProcessing(false); }
+  }
+
+  async function handleRevokeEvent(targetUser, attendanceId, eventId) {
+    if(!window.confirm("WARNING: Revoke this event badge and deduct its XP?")) return;
+    setProcessing(true);
+    try {
+      const client = generateClient();
+      const eventData = events.find(e => e.id === eventId);
+
+      const newXp = Math.max(0, (targetUser.xp || 0) - (eventData?.xp_reward || 0));
+      let newTier = "EXPLORER";
+      if (newXp >= 1200) newTier = "BUILDER";
+      if (newXp >= 2600) newTier = "ARCHITECT";
+      if (newXp >= 4000) newTier = "MASTER";
+
+      const history = targetUser.xp_history ? JSON.parse(targetUser.xp_history) : [];
+      history.push({
+        date: new Date().toISOString(),
+        reason: `ADMIN REVOKED EVENT: ${eventData?.name}`,
+        amount: -(eventData?.xp_reward || 0)
+      });
+
+      await Promise.all([
+        client.graphql({ query: RAW_DELETE_ATTENDANCE, variables: { input: { id: attendanceId } } }),
+        client.graphql({ query: CUSTOM_UPDATE_USER, variables: { input: { id: targetUser.id, xp: newXp, tier: newTier, xp_history: JSON.stringify(history) } } })
+      ]);
+
+      alert(`SUCCESS: Revoked ${eventData?.name} badge from ${targetUser.full_name}`);
+      await fetchData();
+    } catch (err) { alert("REVOKE FAILED."); console.error(err); } finally { setProcessing(false); }
   }
 
   function startEdit(event) {
@@ -302,7 +380,7 @@ export default function Admin({ user }) {
     { id: 'EVENTS', color: '#3ea1f3' },
     { id: 'ROSTER', color: '#00e87f' },
     { id: 'LEADERBOARD', color: '#ff9900' },
-    { id: 'MANUAL XP', color: '#ff57f6' }
+    { id: 'OVERRIDES', color: '#ff57f6' }
   ];
 
   return (
@@ -454,26 +532,52 @@ export default function Admin({ user }) {
 
                 {activeTab === 'LEADERBOARD' && (
                   <div style={{ overflowX: 'auto' }}>
+                    <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#666', marginBottom: '15px' }}>Click on any student to view their detailed positive XP History Log.</p>
                     <table style={tableStyle}>
-                      <thead><tr style={{ backgroundColor: '#9b68f6', color: 'white' }}><th style={thStyle}>RANK</th><th style={thStyle}>ID</th><th style={thStyle}>BUILDER</th><th style={thStyle}>ACADEMIC YR</th><th style={thStyle}>TIER & LVL</th><th style={thStyle}>ATTENDANCE</th><th style={thStyle}>XP</th></tr></thead>
+                      <thead><tr style={{ backgroundColor: '#9b68f6', color: 'white' }}><th style={thStyle}>RANK</th><th style={thStyle}>PFP</th><th style={thStyle}>BUILDER</th><th style={thStyle}>ACADEMIC YR</th><th style={thStyle}>TIER & LVL</th><th style={thStyle}>ATTENDANCE</th><th style={thStyle}>TOTAL XP</th></tr></thead>
                       <tbody>
                         {sortedLeaderboard.map((u, i) => {
                           const userAtts = attendances.filter(a => a.userID === u.id).length;
                           const level = Math.floor((u.xp || 0)/200) + 1; 
                           const userXp = u.xp || 0;
+                          const isExpanded = expandedUser === u.id;
 
                           return (
-                            <tr key={u.id}>
-                              <td style={{ ...tdStyle, fontWeight: '900', textAlign: 'center' }}>
-                                {i === 0 && userXp > 0 ? <img src="/icons/first.png" alt="1st" style={{ width: '20px', verticalAlign: 'middle' }} /> :
-                                 i === 1 && userXp > 0 ? <img src="/icons/second.png" alt="2nd" style={{ width: '20px', verticalAlign: 'middle' }} /> :
-                                 i === 2 && userXp > 0 ? <img src="/icons/third.png" alt="3rd" style={{ width: '20px', verticalAlign: 'middle' }} /> : 
-                                 `#${i + 1}`}
-                              </td>
-                              <td style={tdStyle}>{u.member_id}</td>
-                              <td style={tdStyle}><strong>{u.full_name}</strong></td><td style={tdStyle}>YR {u.year}</td><td style={tdStyle}>{u.tier?.toUpperCase()} • LVL {level}</td>
-                              <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 'bold' }}>{userAtts} Events</td><td style={{ ...tdStyle, fontWeight: '900', color: '#9b68f6' }}>{userXp} PT</td>
-                            </tr>
+                            <React.Fragment key={u.id}>
+                              <tr onClick={() => setExpandedUser(isExpanded ? null : u.id)} style={{ cursor: 'pointer', backgroundColor: isExpanded ? '#f3f4f6' : 'transparent' }}>
+                                <td style={{ ...tdStyle, fontWeight: '900', textAlign: 'center' }}>
+                                  {i === 0 && userXp > 0 ? <img src="/icons/first.png" alt="1st" style={{ width: '20px', verticalAlign: 'middle' }} /> :
+                                  i === 1 && userXp > 0 ? <img src="/icons/second.png" alt="2nd" style={{ width: '20px', verticalAlign: 'middle' }} /> :
+                                  i === 2 && userXp > 0 ? <img src="/icons/third.png" alt="3rd" style={{ width: '20px', verticalAlign: 'middle' }} /> : 
+                                  `#${i + 1}`}
+                                </td>
+                                <td style={{ ...tdStyle, textAlign: 'center' }}>
+                                   <img src={u.avatar_url || '/icons/speaker.svg'} style={{ width: '30px', height: '30px', objectFit: 'cover', border: '2px solid black' }} alt="PFP" />
+                                </td>
+                                <td style={tdStyle}><strong>{u.full_name}</strong> <br/><span style={{fontSize: '9px', color: '#666'}}>{u.member_id}</span></td>
+                                <td style={tdStyle}>YR {u.year}</td><td style={tdStyle}>{u.tier?.toUpperCase()} • LVL {level}</td>
+                                <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 'bold' }}>{userAtts} Events</td><td style={{ ...tdStyle, fontWeight: '900', color: '#9b68f6' }}>{userXp} PT</td>
+                              </tr>
+                              {isExpanded && (
+                                <tr>
+                                  <td colSpan={7} style={{ padding: '15px', backgroundColor: '#f8fafc', borderBottom: '2px solid black', borderTop: '1px dashed #ccc' }}>
+                                    <h4 style={{ margin: '0 0 10px 0', fontSize: '12px', fontWeight: '900', letterSpacing: '1px' }}>XP HISTORY LOG</h4>
+                                    <div style={{ maxHeight: '200px', overflowY: 'auto', paddingRight: '10px' }}>
+                                      {(() => {
+                                        const historyList = u.xp_history ? JSON.parse(u.xp_history).filter(h => h.amount > 0) : [];
+                                        if (historyList.length === 0) return <div style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic' }}>No positive history recorded yet.</div>;
+                                        return historyList.reverse().map((h, idx) => (
+                                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #e2e8f0', fontSize: '11px' }}>
+                                            <span><strong style={{marginRight: '10px'}}>{new Date(h.date).toLocaleDateString()}</strong> {h.reason}</span>
+                                            <span style={{ color: '#10b981', fontWeight: '900' }}>+{h.amount} XP</span>
+                                          </div>
+                                        ));
+                                      })()}
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
                           );
                         })}
                       </tbody>
@@ -481,30 +585,80 @@ export default function Admin({ user }) {
                   </div>
                 )}
 
-                {activeTab === 'MANUAL XP' && (
+                {activeTab === 'OVERRIDES' && (
                   <div>
-                    <h3 style={{ marginTop: 0, fontWeight: '900', borderBottom: '4px solid black', paddingBottom: '10px', textTransform: 'uppercase' }}>[ MANUAL XP OVERRIDE ]</h3>
-                    <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#666', marginBottom: '20px' }}>Issue manual XP for quiz winners, special events, or bonus tasks.</p>
+                    <h3 style={{ marginTop: 0, fontWeight: '900', borderBottom: '4px solid black', paddingBottom: '10px', textTransform: 'uppercase' }}>[ MANUAL SYSTEM OVERRIDES ]</h3>
+                    <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#666', marginBottom: '20px' }}>Add/Deduct XP or Manually Grant/Revoke Event Badges for students.</p>
                     
-                    <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                      <input placeholder="SEARCH STUDENT NAME..." value={filters.full_name} onChange={e => handleFilterChange(e, 'full_name')} style={{ ...inputStyle, flex: 1, minWidth: '200px' }} />
-                      <input type="number" placeholder="XP AMOUNT" value={pointsToAdd} onChange={e => setPointsToAdd(e.target.value)} style={{ ...inputStyle, width: '120px' }} />
-                    </div>
+                    <input placeholder="SEARCH STUDENT NAME..." value={filters.full_name} onChange={e => handleFilterChange(e, 'full_name')} style={{ ...inputStyle, marginBottom: '20px' }} />
                     
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '500px', overflowY: 'auto' }}>
-                      {users.filter(u => u.full_name?.toLowerCase().includes(filters.full_name.toLowerCase())).map(u => (
-                        <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', border: '3px solid black', backgroundColor: '#f9f9f9', flexWrap: 'wrap', gap: '10px' }}>
-                          <div>
-                            <div style={{ fontWeight: '900', fontSize: '14px', textTransform: 'uppercase' }}>
-                              {u.full_name} <span style={{ color: '#888', fontSize: '12px' }}>({u.member_id})</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                      {users.filter(u => u.full_name?.toLowerCase().includes(filters.full_name.toLowerCase())).map(u => {
+                        const userAtts = attendances.filter(a => a.userID === u.id);
+                        const userAttIds = userAtts.map(a => a.eventID);
+                        const availableEvents = events.filter(e => !userAttIds.includes(e.id));
+
+                        return (
+                        <div key={u.id} style={{ padding: '15px', border: '4px solid black', backgroundColor: '#f9f9f9', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                          
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', borderBottom: '2px dashed #ccc', paddingBottom: '10px' }}>
+                            <img src={u.avatar_url || '/icons/speaker.svg'} style={{ width: '40px', height: '40px', objectFit: 'cover', border: '2px solid black' }} alt="PFP" />
+                            <div>
+                              <div style={{ fontWeight: '900', fontSize: '16px', textTransform: 'uppercase' }}>
+                                {u.full_name} <span style={{ color: '#888', fontSize: '12px' }}>({u.member_id})</span>
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#666', fontWeight: 'bold', marginTop: '4px' }}>TOTAL: <span style={{color: '#9b68f6'}}>{u.xp || 0} XP</span> • {u.tier}</div>
                             </div>
-                            <div style={{ fontSize: '11px', color: '#666', fontWeight: 'bold', marginTop: '4px' }}>CURRENT: <span style={{color: '#9b68f6'}}>{u.xp || 0} XP</span> • {u.major?.join(' + ')}</div>
                           </div>
-                          <button onClick={() => addXpManually(u)} disabled={processing} style={{ backgroundColor: '#ff9900', color: 'black', border: '3px solid black', fontWeight: '900', cursor: 'pointer', padding: '10px 20px', boxShadow: '4px 4px 0px black', fontSize: '11px' }}>
-                            {processing ? 'SYNCING...' : `GIVE +${pointsToAdd || 0} XP`}
-                          </button>
+
+                          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                            
+                            {/* XP OVERRIDE SECTION */}
+                            <div style={{ flex: '1 1 300px', backgroundColor: 'white', border: '2px solid black', padding: '15px' }}>
+                              <h4 style={{ margin: '0 0 10px 0', fontSize: '12px', fontWeight: '900' }}>XP OVERRIDE</h4>
+                              <input type="text" placeholder="REASON (e.g. Quiz Winner)" value={manualReason} onChange={e => setManualReason(e.target.value)} style={{ ...inputStyle, marginBottom: '10px', padding: '8px' }} />
+                              <div style={{ display: 'flex', gap: '10px' }}>
+                                <input type="number" placeholder="XP AMOUNT" value={pointsToAdd} onChange={e => setPointsToAdd(e.target.value)} style={{ ...inputStyle, flex: 1, padding: '8px' }} />
+                                <button onClick={() => handleXPOverride(u, true)} disabled={processing} style={{ backgroundColor: '#10b981', color: 'white', border: '2px solid black', fontWeight: '900', cursor: 'pointer', padding: '8px 15px', fontSize: '11px' }}>+ ADD</button>
+                                <button onClick={() => handleXPOverride(u, false)} disabled={processing} style={{ backgroundColor: '#ef4444', color: 'white', border: '2px solid black', fontWeight: '900', cursor: 'pointer', padding: '8px 15px', fontSize: '11px' }}>- DEDUCT</button>
+                              </div>
+                            </div>
+
+                            {/* BADGE OVERRIDE SECTION */}
+                            <div style={{ flex: '1 1 300px', backgroundColor: 'white', border: '2px solid black', padding: '15px' }}>
+                              <h4 style={{ margin: '0 0 10px 0', fontSize: '12px', fontWeight: '900' }}>BADGE & ATTENDANCE OVERRIDE</h4>
+                              
+                              {/* Grant Badge */}
+                              <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                                <select id={`select-event-${u.id}`} style={{ ...inputStyle, flex: 1, padding: '8px', fontSize: '11px' }}>
+                                  <option value="">-- SELECT EVENT TO GRANT --</option>
+                                  {availableEvents.map(e => <option key={e.id} value={e.id}>{e.name} (+{e.xp_reward} XP)</option>)}
+                                </select>
+                                <button onClick={() => {
+                                  const sel = document.getElementById(`select-event-${u.id}`);
+                                  if (sel.value) handleGrantEvent(u, sel.value);
+                                }} disabled={processing} style={{ backgroundColor: '#3ea1f3', color: 'white', border: '2px solid black', fontWeight: '900', cursor: 'pointer', padding: '8px 15px', fontSize: '11px' }}>GRANT</button>
+                              </div>
+
+                              {/* Revoke Badge */}
+                              <div style={{ fontSize: '10px', fontWeight: '900', color: '#666', marginBottom: '5px' }}>CURRENT BADGES (CLICK TO REVOKE)</div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', maxHeight: '100px', overflowY: 'auto' }}>
+                                {userAtts.length === 0 && <span style={{ fontSize: '11px', fontStyle: 'italic', color: '#999' }}>No events attended.</span>}
+                                {userAtts.map(a => {
+                                  const eData = events.find(e => e.id === a.eventID);
+                                  return (
+                                    <div key={a.id} onClick={() => handleRevokeEvent(u, a.id, a.eventID)} style={{ backgroundColor: '#fff5f5', border: '2px solid #ef4444', color: '#ef4444', padding: '4px 8px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                      <span style={{ fontWeight: '900' }}>X</span> {eData?.name || 'Unknown Event'}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+
+                          </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}

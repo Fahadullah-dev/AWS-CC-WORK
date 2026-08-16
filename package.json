@@ -1,1 +1,1 @@
-{"scripts":{"build":"cd cloud-passport && npm run build"},"dependencies":{"html5-qrcode":"^2.3.8","qrcode":"^1.5.4","react-router-dom":"^7.14.2"}}
+{"scripts":{"build":"cd cloud-passport && npm run build"},"dependencies":{"animejs":"^4.4.1","html5-qrcode":"^2.3.8","qrcode":"^1.5.4","react-router-dom":"^7.15.0"}}
